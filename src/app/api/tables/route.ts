@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { customAlphabet } from 'nanoid'
-
-const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 10)
+import { nanoid } from 'nanoid'
 
 export async function GET() {
   try {
     const tables = await prisma.table.findMany({
-      orderBy: { number: 'asc' }
+      orderBy: { number: 'asc' },
+      include: {
+        orders: {
+          where: { status: { not: 'PAID' } },
+          select: { id: true, status: true, total: true }
+        }
+      }
     })
     return NextResponse.json(tables)
   } catch (error) {
@@ -16,31 +20,36 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-    const { number, capacity } = body
+    const { number, capacity } = await req.json()
 
     if (!number || !capacity) {
       return NextResponse.json({ error: 'Number and capacity are required' }, { status: 400 })
     }
 
-    // Check if table number is unique
-    const existing = await prisma.table.findUnique({ where: { number } })
-    if (existing) {
+    const existingTable = await prisma.table.findUnique({
+      where: { number: parseInt(number) }
+    })
+
+    if (existingTable) {
       return NextResponse.json({ error: 'Table number already exists' }, { status: 400 })
     }
 
-    // Generate a unique token for the table (URL-safe)
-    const token = nanoid()
+    const restaurant = await prisma.restaurant.findFirst()
+    if (!restaurant) {
+      return NextResponse.json({ error: 'No restaurant found' }, { status: 400 })
+    }
+
+    const token = `tbl_${number}_${nanoid(8)}`
 
     const table = await prisma.table.create({
       data: {
-        number,
-        capacity,
+        number: parseInt(number),
+        capacity: parseInt(capacity),
         status: 'AVAILABLE',
         token,
-        restaurantId: 'default-restaurant-id' // Replace with actual restaurant ID or setup logic
+        restaurantId: restaurant.id
       }
     })
 
@@ -48,5 +57,38 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating table:', error)
     return NextResponse.json({ error: 'Failed to create table' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const url = new URL(req.url)
+    const id = url.searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json({ error: 'Table ID is required' }, { status: 400 })
+    }
+
+    const activeOrders = await prisma.order.findMany({
+      where: {
+        tableId: id,
+        status: { not: 'PAID' }
+      }
+    })
+
+    if (activeOrders.length > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete table with active orders' 
+      }, { status: 400 })
+    }
+
+    await prisma.table.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting table:', error)
+    return NextResponse.json({ error: 'Failed to delete table' }, { status: 500 })
   }
 }
