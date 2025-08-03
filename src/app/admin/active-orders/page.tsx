@@ -11,9 +11,21 @@ interface Table {
 }
 
 export default function ActiveOrders() {
-  const { data: tables = [] } = useSWR<Table[]>('/api/admin/active-orders', url =>
+  const { data: tables, isLoading } = useSWR<Table[]>('/api/admin/active-orders', (url: string) =>
     fetch(url).then(res => res.json())
   )
+
+  if (isLoading) {
+    return (
+      <section className="p-8 space-y-8">
+        <header>
+          <h1 className="text-3xl font-bold text-white">Active Orders</h1>
+          <p className="text-slate-400">Tables currently with active orders</p>
+        </header>
+        <div>Loading...</div>
+      </section>
+    )
+  }
 
   return (
     <section className="p-8 space-y-8">
@@ -23,7 +35,7 @@ export default function ActiveOrders() {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tables.map(table => (
+        {(tables ?? []).map(table => (
           <Link
             key={table.id}
             href={`/admin/active-orders/table/${table.id}`}

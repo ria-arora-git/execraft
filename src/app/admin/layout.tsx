@@ -1,13 +1,16 @@
-import AdminNavbar from '@/components/ui/AdminNavbar'
+import { Navigation } from '@/components/ui/Navigation'
+import { AlertsManager } from '@/components/AlertsManager'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <div className="min-h-screen bg-blueDark flex flex-col">
-      {/* Your responsive admin top navbar */}
-      <AdminNavbar />
-
-      {/* The page content below the navbar */}
-      <main className="flex-1 p-8">
+    <div className="min-h-screen bg-blueDark">
+      <Navigation />
+      <AlertsManager />
+      <main className="flex-1">
         {children}
       </main>
     </div>

@@ -27,7 +27,7 @@ export default function MenuManagement() {
     description: '',
     price: '',
     category: '',
-    prepTime: '',    // Added prepTime
+    prepTime: '',
     image: ''
   })
 
@@ -35,19 +35,17 @@ export default function MenuManagement() {
     fetchMenuItems()
   }, [])
 
-  const fetchMenuItems = async () => {
+  async function fetchMenuItems() {
     try {
-      const response = await fetch('/api/menu')
-      if (response.ok) {
-        const data: MenuItem[] = await response.json()
-        setMenuItems(data)
-      } else {
-        toast.error('Failed to fetch menu items')
-      }
+      const res = await fetch('/api/menu')
+      if (!res.ok) throw new Error('Failed to fetch menu items')
+      const data = await res.json()
+      setMenuItems(data)
     } catch {
       toast.error('Error fetching menu items')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const resetForm = () => {
@@ -76,28 +74,20 @@ export default function MenuManagement() {
     setShowForm(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // Validate fields (prepTime is required now)
-    if (
-      !form.name.trim() ||
-      !form.description.trim() ||
-      isNaN(parseFloat(form.price)) ||
-      !form.category.trim() ||
-      !form.prepTime.trim() ||
-      isNaN(parseInt(form.prepTime))
-    ) {
+    if (!form.name.trim() || !form.description.trim() || !form.category.trim() || isNaN(parseFloat(form.price)) || (form.prepTime && isNaN(parseInt(form.prepTime)))) {
       toast.error('Please fill all required fields correctly')
       return
     }
 
-    const menuItemData = {
+    const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
       price: parseFloat(form.price),
       category: form.category.trim(),
-      prepTime: parseInt(form.prepTime),
+      prepTime: form.prepTime ? parseInt(form.prepTime) : undefined,
       image: form.image.trim() || null
     }
 
@@ -105,37 +95,38 @@ export default function MenuManagement() {
       const url = editingItem ? `/api/menu/${editingItem.id}` : '/api/menu'
       const method = editingItem ? 'PUT' : 'POST'
 
-      const response = await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(menuItemData)
+        body: JSON.stringify(payload)
       })
 
-      if (response.ok) {
-        toast.success(editingItem ? 'Menu item updated' : 'Menu item created')
-        resetForm()
-        fetchMenuItems()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to save menu item')
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to save menu item')
+        return
       }
+
+      toast.success(editingItem ? 'Menu item updated' : 'Menu item created')
+      resetForm()
+      await fetchMenuItems()
     } catch {
       toast.error('Error saving menu item')
     }
   }
 
-  const deleteMenuItem = async (id: string) => {
+  async function deleteMenuItem(id: string) {
     if (!confirm('Are you sure you want to delete this menu item?')) return
 
     try {
-      const response = await fetch(`/api/menu/${id}`, { method: 'DELETE' })
-      if (response.ok) {
-        toast.success('Menu item deleted')
-        fetchMenuItems()
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to delete menu item')
+      const res = await fetch(`/api/menu/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err.error || 'Failed to delete menu item')
+        return
       }
+      toast.success('Menu item deleted')
+      await fetchMenuItems()
     } catch {
       toast.error('Error deleting menu item')
     }
@@ -148,7 +139,7 @@ export default function MenuManagement() {
     (item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  if (loading) return <div className="p-8 text-white">Loading menu items...</div>
+  if (loading) return <div className="p-8 text-white text-center">Loading menu items...</div>
 
   return (
     <div className="p-8 bg-blueDark min-h-screen space-y-8">
@@ -175,13 +166,13 @@ export default function MenuManagement() {
           className="px-4 py-2 rounded border border-slate-600 text-white bg-blueDark focus:outline-none focus:ring-2 focus:ring-accent"
           aria-label="Filter by category"
         >
-          {categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
+          {categories.map(category => (
+            <option key={category} value={category}>{category}</option>
           ))}
         </select>
       </div>
 
-      {/* Table of Menu Items */}
+      {/* Items Table */}
       <div className="bg-blueBase rounded-xl overflow-hidden">
         <table className="w-full text-white">
           <thead className="bg-slate-800">
@@ -241,7 +232,7 @@ export default function MenuManagement() {
         </table>
       </div>
 
-      {/* Modal for Add/Edit Form */}
+      {/* Add/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-blueBase rounded-xl p-8 max-w-md w-full">
@@ -259,7 +250,6 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 aria-label="Menu Item Name"
               />
-
               <textarea
                 required
                 placeholder="Description"
@@ -269,7 +259,6 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                 aria-label="Menu Item Description"
               />
-
               <input
                 type="number"
                 required
@@ -281,10 +270,8 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 aria-label="Menu Item Price"
               />
-
               <input
                 type="number"
-                required
                 min="0"
                 placeholder="Prep Time (minutes)"
                 value={form.prepTime}
@@ -292,7 +279,6 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 aria-label="Menu Item Prep Time"
               />
-
               <input
                 type="text"
                 required
@@ -302,7 +288,6 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 aria-label="Menu Item Category"
               />
-
               <input
                 type="url"
                 placeholder="Image URL (optional)"
@@ -311,7 +296,6 @@ export default function MenuManagement() {
                 className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 aria-label="Menu Item Image URL"
               />
-
               <div className="flex justify-end space-x-4 pt-4">
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel

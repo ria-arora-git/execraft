@@ -9,11 +9,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Orders with status PAID or CANCELLED considered historical
-    const historicalOrders = await prisma.order.findMany({
+    // Orders with status NOT PAID (active)
+    const activeOrders = await prisma.order.findMany({
       where: {
         status: {
-          in: ['PAID', 'CANCELLED'],
+          not: 'PAID',
         },
       },
       include: {
@@ -29,9 +29,9 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(historicalOrders);
+    return NextResponse.json(activeOrders);
   } catch (error) {
-    console.error('Error fetching order history:', error);
-    return NextResponse.json({ error: 'Failed to fetch order history' }, { status: 500 });
+    console.error('Error fetching active orders:', error);
+    return NextResponse.json({ error: 'Failed to fetch active orders' }, { status: 500 });
   }
 }

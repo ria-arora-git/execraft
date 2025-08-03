@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { exportOrders } from '@/lib/export'
 import useSWR from 'swr'
@@ -12,7 +12,7 @@ export default function OrderHistory() {
   const [currentPage, setCurrentPage] = useState(1)
   const ordersPerPage = 20
 
-  const { data: orders = [], mutate } = useSWR(
+  const { data: orders = [] } = useSWR(
     selectedDate
       ? `/api/admin/order-history?date=${selectedDate.toISOString()}&skip=${
           (currentPage - 1) * ordersPerPage
@@ -20,7 +20,7 @@ export default function OrderHistory() {
       : `/api/admin/order-history?skip=${
           (currentPage - 1) * ordersPerPage
         }&take=${ordersPerPage}`,
-    url => fetch(url).then(res => res.json())
+    (url: string) => fetch(url).then(res => res.json())
   )
 
   const handleExport = () => {

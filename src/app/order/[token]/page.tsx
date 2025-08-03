@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 
 interface MenuItem {
@@ -38,15 +39,17 @@ export default function CustomerOrder({ params }: { params: { token: string } })
   }, [params.token])
 
   async function validateTableAndLoadMenu() {
+    setLoading(true)
     try {
-      const tableRes = await fetch('/api/tables/validate', {
+      const tableRes = await fetch('/api/table-management/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: params.token }),
       })
       if (!tableRes.ok) {
-        toast.error('Invalid table token')
+        toast.error('Invalid table token.')
         setTable(null)
+        setMenuItems([])
         setLoading(false)
         return
       }
@@ -55,48 +58,50 @@ export default function CustomerOrder({ params }: { params: { token: string } })
 
       const menuRes = await fetch('/api/menu')
       if (!menuRes.ok) {
-        toast.error('Failed to load menu')
+        toast.error('Failed to load menu.')
         setMenuItems([])
       } else {
         const menuData = await menuRes.json()
         setMenuItems(menuData)
       }
-    } catch {
-      toast.error('Failed to load data')
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to load data. Please try again.')
       setTable(null)
       setMenuItems([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const categories = ['All', ...Array.from(new Set(menuItems.map(i => i.category)))]
 
-  const filteredItems =
-    activeCategory === 'All'
-      ? menuItems
-      : menuItems.filter(i => i.category === activeCategory)
+  const filteredItems = activeCategory === 'All'
+    ? menuItems
+    : menuItems.filter(i => i.category === activeCategory)
 
-  const addToCart = (menuItem: MenuItem) => {
+  function addToCart(menuItem: MenuItem) {
     setCart(prev => {
-      const existing = prev.find(ci => ci.menuItemId === menuItem.id)
-      if (existing) {
-        return prev.map(ci =>
-          ci.menuItemId === menuItem.id ? { ...ci, quantity: ci.quantity + 1 } : ci
-        )
+      const existingIndex = prev.findIndex(ci => ci.menuItemId === menuItem.id)
+      if (existingIndex !== -1) {
+        // increment quantity
+        const newCart = [...prev]
+        newCart[existingIndex] = {
+          ...newCart[existingIndex],
+          quantity: newCart[existingIndex].quantity + 1,
+        }
+        return newCart
       }
       return [...prev, { menuItemId: menuItem.id, menuItem, quantity: 1 }]
     })
   }
 
-  const updateQuantity = (menuItemId: string, quantity: number) => {
+  function updateQuantity(menuItemId: string, quantity: number) {
     if (quantity <= 0) {
+      // remove item
       setCart(prev => prev.filter(ci => ci.menuItemId !== menuItemId))
     } else {
-      setCart(prev =>
-        prev.map(ci =>
-          ci.menuItemId === menuItemId ? { ...ci, quantity } : ci
-        )
-      )
+      setCart(prev => prev.map(ci => ci.menuItemId === menuItemId ? { ...ci, quantity } : ci))
     }
   }
 
@@ -114,8 +119,10 @@ export default function CustomerOrder({ params }: { params: { token: string } })
     return (
       <div className="min-h-screen bg-blueDark flex items-center justify-center px-4">
         <div className="text-center">
-          <h2 className="text-2xl text-white mb-4">Invalid Table QR Code</h2>
-          <p className="text-slate-400 mb-6">Please scan a valid QR code or contact staff.</p>
+          <h2 className="text-2xl text-white mb-4">Invalid Table</h2>
+          <p className="text-slate-400 mb-6">
+            This QR code is invalid. Please scan a valid table QR code or contact restaurant staff.
+          </p>
           <Link href="/">
             <Button>Go Home</Button>
           </Link>
@@ -129,9 +136,9 @@ export default function CustomerOrder({ params }: { params: { token: string } })
       {/* Sidebar */}
       <aside className="w-72 bg-blueBase border-r border-slate-800 p-6 overflow-y-auto">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white mb-1">Table {table.number}</h2>
-          <p className="text-slate-400 text-sm mb-1">{table.restaurantName}</p>
-          <p className="text-slate-400 text-sm">Capacity: {table.capacity} people</p>
+          <h2 className="text-3xl font-bold text-white mb-1">Table {table.number}</h2>
+          <p className="text-slate-400 text-sm">{table.restaurantName}</p>
+          <p className="text-slate-400 text-sm">Capacity: {table.capacity} {table.capacity === 1 ? 'person' : 'people'}</p>
         </div>
 
         <h3 className="text-lg font-semibold text-white mb-3">Categories</h3>
@@ -139,12 +146,14 @@ export default function CustomerOrder({ params }: { params: { token: string } })
           {categories.map(cat => (
             <button
               key={cat}
+              type="button"
               onClick={() => setActiveCategory(cat)}
               className={`w-full py-2 px-4 rounded-lg text-left text-sm transition-colors ${
                 activeCategory === cat
                   ? 'bg-accent font-semibold text-white'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
+              aria-current={activeCategory === cat ? 'page' : undefined}
             >
               {cat}
             </button>
@@ -158,7 +167,7 @@ export default function CustomerOrder({ params }: { params: { token: string } })
           {activeCategory === 'All' ? 'All Menu Items' : activeCategory}
         </h1>
         <p className="text-slate-400 mb-6">
-          Choose from {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
+          {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
         </p>
 
         <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -167,38 +176,35 @@ export default function CustomerOrder({ params }: { params: { token: string } })
             return (
               <div
                 key={item.id}
-                className="bg-blueBase rounded-2xl p-6 flex flex-col hover:ring-2 hover:ring-accent transition duration-200 hover:scale-105"
+                className="bg-blueBase rounded-2xl p-6 flex flex-col hover:ring-2 ring-accent transition-transform duration-200"
               >
-                <div className="flex-1">
-                  <h3 className="text-white font-semibold text-lg mb-2">{item.name}</h3>
-                  <p className="text-slate-400 text-sm mb-4">{item.description}</p>
-                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">{item.name}</h3>
+                <p className="text-slate-400 flex-grow">{item.description}</p>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-accent font-bold text-xl">${item.price.toFixed(2)}</span>
-
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-2xl font-bold text-accent">${item.price.toFixed(2)}</span>
                   {cartItem ? (
                     <div className="flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        aria-label={`Decrease ${item.name} quantity`}
+                      <button
+                        type="button"
+                        aria-label={`Decrease quantity of ${item.name}`}
                         onClick={() => updateQuantity(item.id, cartItem.quantity - 1)}
+                        className="w-8 h-8 rounded-full bg-blueDark flex items-center justify-center text-white hover:bg-blue-600"
                       >
-                        -
-                      </Button>
-                      <span className="text-white font-medium w-8 text-center">{cartItem.quantity}</span>
-                      <Button
-                        size="sm"
-                        aria-label={`Increase ${item.name} quantity`}
+                        –
+                      </button>
+                      <span className="text-white font-semibold w-8 text-center">{cartItem.quantity}</span>
+                      <button
+                        type="button"
+                        aria-label={`Increase quantity of ${item.name}`}
                         onClick={() => updateQuantity(item.id, cartItem.quantity + 1)}
+                        className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center hover:bg-green-600"
                       >
                         +
-                      </Button>
+                      </button>
                     </div>
                   ) : (
-                    <Button size="sm" onClick={() => addToCart(item)} aria-label={`Add ${item.name} to cart`}>
-                      Add
-                    </Button>
+                    <Button onClick={() => addToCart(item)}>Add</Button>
                   )}
                 </div>
               </div>
@@ -207,34 +213,38 @@ export default function CustomerOrder({ params }: { params: { token: string } })
         </div>
       </main>
 
-      {/* Sticky Cart (bottom-left) */}
+      {/* Cart (sticky bottom-left) */}
       <div className="fixed bottom-0 left-0 m-4 w-96 z-50">
-        <div className="bg-blueBase border-t-4 border-bluePri rounded-t-2xl p-6 shadow-2xl max-h-[350px] flex flex-col">
-          <h3 className="text-white font-bold text-lg mb-4">Your Order</h3>
+        <div className="bg-blueBase border-t-4 border-bluePri rounded-t-3xl p-6 shadow-lg max-h-[380px] flex flex-col">
+          <h3 className="text-xl font-bold text-white mb-4">Your Order</h3>
 
-          {cart.length > 0 ? (
+          {cart.length === 0 ? (
+            <p className="text-slate-400 text-center py-16">Your cart is empty</p>
+          ) : (
             <>
-              <ul className="overflow-y-auto mb-4 flex-1 space-y-3">
+              <ul className="overflow-y-auto max-h-52 space-y-3 mb-6">
                 {cart.map(ci => (
-                  <li key={ci.menuItemId} className="flex justify-between items-center">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium truncate">{ci.menuItem.name}</p>
+                  <li key={ci.menuItemId} className="flex items-center justify-between">
+                    <div className="truncate max-w-xs">
+                      <p className="text-white font-semibold truncate">{ci.menuItem.name}</p>
                       <p className="text-slate-400 text-sm">${ci.menuItem.price.toFixed(2)} each</p>
                     </div>
 
-                    <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                    <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => updateQuantity(ci.menuItemId, ci.quantity - 1)}
-                        className="w-6 h-6 rounded-full bg-slate-700 text-white hover:bg-slate-600 flex items-center justify-center"
+                        type="button"
                         aria-label={`Decrease quantity of ${ci.menuItem.name}`}
+                        onClick={() => updateQuantity(ci.menuItemId, ci.quantity - 1)}
+                        className="w-8 h-8 rounded-full bg-blueDark flex items-center justify-center text-white hover:bg-blue-600"
                       >
                         –
                       </button>
-                      <span className="w-8 text-center text-white font-medium">{ci.quantity}</span>
+                      <span className="text-white font-semibold w-8 text-center">{ci.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(ci.menuItemId, ci.quantity + 1)}
-                        className="w-6 h-6 rounded-full bg-accent text-white hover:bg-bluePri flex items-center justify-center"
+                        type="button"
                         aria-label={`Increase quantity of ${ci.menuItem.name}`}
+                        onClick={() => updateQuantity(ci.menuItemId, ci.quantity + 1)}
+                        className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center hover:bg-green-600"
                       >
                         +
                       </button>
@@ -243,35 +253,25 @@ export default function CustomerOrder({ params }: { params: { token: string } })
                 ))}
               </ul>
 
-              <div className="border-t border-slate-600 pt-4 mb-4">
-                <div className="flex justify-between items-center text-white text-xl font-bold">
+              <div className="border-t border-slate-600 pt-4">
+                <div className="flex justify-between text-white text-2xl font-bold">
                   <span>Total:</span>
-                  <span className="text-accent">${totalAmount.toFixed(2)}</span>
+                  <span>${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
 
               <Link
                 href={{
                   pathname: `/order/${params.token}/checkout`,
-                  query: {
-                    cart: JSON.stringify(
-                      cart.map(ci => ({
-                        menuItemId: ci.menuItemId,
-                        quantity: ci.quantity,
-                        price: ci.menuItem.price,
-                        name: ci.menuItem.name,
-                      }))
-                    ),
-                  },
+                  query: { cart: JSON.stringify(cart.map(({ menuItemId, quantity }) => ({ menuItemId, quantity }))) },
                 }}
+                className="block mt-6"
               >
-                <Button className="w-full" aria-label="Proceed to Checkout">
-                  Proceed to Checkout (${totalAmount.toFixed(2)})
+                <Button className="w-full" disabled={cart.length === 0}>
+                  Proceed to Checkout
                 </Button>
               </Link>
             </>
-          ) : (
-            <p className="text-slate-400 text-center py-14">Your cart is empty</p>
           )}
         </div>
       </div>

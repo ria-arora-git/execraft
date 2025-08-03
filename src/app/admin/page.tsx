@@ -1,97 +1,158 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
+import { Package, ShoppingCart, AlertTriangle, TrendingUp, DollarSign, Users, Clock } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
+import { Button } from '@/components/ui/Button'
 
-export default function AdminHome() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+interface DashboardStats {
+  totalOrders: number
+  todayRevenue: number
+  lowStockItems: number
+  activeOrders: number
+  totalMenuItems: number
+  totalInventoryItems: number
+}
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [recentOrders, setRecentOrders] = useState<any[]>([])
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    fetchDashboardData()
+  }, [])
 
-  const cards = [
-    {
-      href: "/admin/active-orders",
-      icon: "📦",
-      label: "Active Orders",
-      description: "Manage current table orders and status updates",
-    },
-    {
-      href: "/admin/menu-management",
-      icon: "🍽️",
-      label: "Menu Management",
-      description: "Add, edit, and manage menu items and categories",
-    },
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, ordersRes] = await Promise.all([
+        fetch('/api/analytics'),
+        fetch('/api/orders?limit=5'),
+      ])
 
-    {
-      href: "/admin/inventory",
-      icon: "🥕",
-      label: "Inventory",
-      description: "Manage stock and supplies",
-    },
-    {
-      href: "/admin/recipes",
-      icon: "🍽️",
-      label: "Recipe Management",
-      description: "Map ingredients to menu items",
-    },
-    {
-      href: "/admin/table-management",
-      icon: "🪑",
-      label: "Table Management",
-      description: "Manage tables and QR codes",
-    },
-    {
-      href: "/admin/alerts",
-      icon: "⚠️",
-      label: "Stock Alerts",
-      description: "View inventory low-stock alerts",
-    },
-    {
-      href: "/admin/analytics",
-      icon: "📊",
-      label: "Analytics",
-      description: "Business performance metrics",
-    },
-    {
-      href: '/admin/order-history',
-      icon: '📋',
-      label: 'Order History',
-      description: 'Browse and export previous orders'
-    },
-  ];
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        setStats(statsData)
+      }
+
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json()
+        setRecentOrders(ordersData.slice(0, 5))
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 text-white text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-accent mx-auto"></div>
+        <p className="mt-4">Loading dashboard...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-blueDark pt-8 px-6">
-      <div className="max-w-7xl mx-auto p-4">
-        <header className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <div className="text-right text-slate-400">
-            <div>{currentTime.toLocaleDateString()}</div>
-            <div className="font-mono text-accent text-lg">
-              {currentTime.toLocaleTimeString()}
-            </div>
-          </div>
-        </header>
+    <div className="p-6 lg:p-8 space-y-8 bg-blueDark min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <p className="text-slate-300 mt-2 sm:mt-0">Welcome back! Here's what's happening with your restaurant.</p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-          {cards.map((card) => (
-            <Link key={card.href} href={card.href}>
-              <div className="bg-blueBase p-8 rounded-3xl cursor-pointer hover:bg-slate-800 transition transform hover:scale-[1.04]">
-                <div className="text-5xl mb-4">{card.icon}</div>
-                <h3 className="text-xl font-semibold text-white mb-3">
-                  {card.label}
-                </h3>
-                <p className="text-slate-400 text-sm">{card.description}</p>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Today's Revenue"
+          value={formatCurrency(stats?.todayRevenue || 0)}
+          icon={DollarSign}
+          color="text-green-400"
+        />
+        <StatCard
+          title="Total Orders"
+          value={stats?.totalOrders?.toString() || '0'}
+          icon={ShoppingCart}
+          color="text-blue-400"
+        />
+        <StatCard
+          title="Active Orders"
+          value={stats?.activeOrders?.toString() || '0'}
+          icon={Clock}
+          color="text-yellow-400"
+        />
+        <StatCard
+          title="Low Stock Items"
+          value={stats?.lowStockItems?.toString() || '0'}
+          icon={AlertTriangle}
+          color="text-red-400"
+        />
+      </div>
+
+      {/* Recent Orders */}
+      <div className="bg-blueBase p-6 rounded-xl shadow-lg">
+        <h2 className="text-xl font-semibold text-white mb-4">Recent Orders</h2>
+        <div className="space-y-3">
+          {recentOrders.length === 0 ? (
+            <p className="text-slate-400">No recent orders</p>
+          ) : (
+            recentOrders.map(order => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between p-3 bg-blueDark rounded-lg"
+              >
+                <div>
+                  <p className="text-white font-medium">#{order.orderNumber}</p>
+                  <p className="text-sm text-slate-400">{order.customerName}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-medium">{formatCurrency(order.total)}</p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      order.status === 'PENDING'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : order.status === 'PREPARING'
+                        ? 'bg-blue-100 text-blue-800'
+                        : order.status === 'READY'
+                        ? 'bg-green-100 text-green-800'
+                        : order.status === 'SERVED'
+                        ? 'bg-purple-100 text-purple-800'
+                        : order.status === 'PAID'
+                        ? 'bg-gray-100 text-gray-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {order.status}
+                  </span>
+                </div>
               </div>
-            </Link>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
-  );
+  )
+}
+
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  color
+}: {
+  title: string
+  value: string
+  icon: React.ElementType
+  color: string
+}) {
+  return (
+    <div className="bg-blueBase p-6 rounded-xl shadow-lg flex items-center space-x-4">
+      <Icon className={`h-10 w-10 ${color}`} />
+      <div>
+        <p className="text-slate-400 text-sm">{title}</p>
+        <p className="text-white font-bold text-2xl">{value}</p>
+      </div>
+    </div>
+  )
 }

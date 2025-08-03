@@ -1,28 +1,60 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
 
-// Note: You may want to adapt aggregation as per your needs.
 export async function GET() {
-  const today = new Date()
-  today.setHours(0,0,0,0)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const todayOrders = await prisma.order.count({
-    where: { createdAt: { gte: today, lt: tomorrow } }
-  })
-  const todayRevenue = await prisma.order.aggregate({
-    _sum: { total: true },
-    where: { createdAt: { gte: today, lt: tomorrow } }
-  })
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Dummy for avg, use real stats as needed
-  return NextResponse.json({
-    todayOrders,
-    todayRevenue: todayRevenue._sum.total || 0,
-    avgCustomersPerDay: 42,
-    ordersPerDay: 38,
-    revenuePerDay: 520.75,
-    inventoryUsagePerDay: 125
-  })
+    // Aggregate data
+    const totalOrders = await prisma.order.count();
+    const todayOrders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+        },
+      },
+    });
+
+    const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
+    
+    const lowStockCount = await prisma.inventoryItem.count({
+      where: {
+        quantity: {
+          lte: prisma.inventoryItem.fields.minStock,
+        },
+      },
+    });
+    
+    const activeOrdersCount = await prisma.order.count({
+      where: {
+        status: {
+          not: 'PAID',
+        },
+      },
+    });
+
+    const totalMenuItems = await prisma.menuItem.count();
+    const totalInventoryItems = await prisma.inventoryItem.count();
+
+    const data = {
+      totalOrders,
+      todayRevenue,
+      lowStockCount,
+      activeOrdersCount,
+      totalMenuItems,
+      totalInventoryItems,
+    };
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
+  }
 }
