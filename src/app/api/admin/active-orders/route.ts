@@ -1,37 +1,28 @@
-export const dynamic = "force-dynamic";
-
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
-  try {
-    // Clerk auth: only authenticated users
-    const { userId } = await auth();
+  const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // Fetch all "active" (open/unpaid) orders
-    const activeOrders = await prisma.order.findMany({
+  try {
+    const tables = await prisma.table.findMany({
       where: {
-        status: {
-          notIn: ['PAID', 'CANCELLED'],
-        },
+        orders: {
+          some: { status: { not: 'PAID' } }
+        }
       },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        table: true,
-        items: {
-          include: { menuItem: true },
-        },
-        session: true,
-      },
-    });
+      include: { orders: true },
+    })
 
-    return NextResponse.json(activeOrders);
+    return NextResponse.json(tables)
   } catch (error) {
-    console.error('Error fetching active orders:', error);
-    return NextResponse.json({ error: 'Failed to fetch active orders' }, { status: 500 });
+    console.error('Error fetching active orders tables:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch tables with active orders' },
+      { status: 500 }
+    )
   }
 }

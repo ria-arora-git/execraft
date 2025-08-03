@@ -1,126 +1,132 @@
-export const dynamic = "force-dynamic";
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tables = await prisma.table.findMany({
-      orderBy: { number: 'asc' },
-    });
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.restaurantId) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-    return NextResponse.json(tables);
+    const tables = await prisma.table.findMany({
+      where: { restaurantId: user.restaurantId },
+      orderBy: { number: 'asc' },
+    })
+    return NextResponse.json(tables)
   } catch (error) {
-    console.error('Error fetching tables:', error);
-    return NextResponse.json({ error: 'Failed to fetch tables' }, { status: 500 });
+    console.error('Error fetching tables:', error)
+    return NextResponse.json({ error: 'Failed to fetch tables' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { number, capacity } = await req.json();
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.restaurantId) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-    if (!number || !capacity || capacity < 1) {
-      return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 });
+    const { number, capacity } = await req.json()
+
+    if (typeof number !== 'number' || typeof capacity !== 'number' || capacity < 1) {
+      return NextResponse.json({ error: 'Invalid table number or capacity' }, { status: 400 })
     }
 
-    // Check if table number already exists
-    const existingTable = await prisma.table.findUnique({
-      where: { number },
-    });
-    if (existingTable) {
-      return NextResponse.json({ error: 'Table number already exists' }, { status: 400 });
-    }
+    const existing = await prisma.table.findFirst({
+      where: { number, restaurantId: user.restaurantId },
+    })
+    if (existing) return NextResponse.json({ error: 'Table number already exists' }, { status: 409 })
 
-    // Generate token for the table (e.g., unique string)
-    const token = Math.random().toString(36).substr(2, 10).toUpperCase();
+    const token = Math.random().toString(36).slice(2, 12).toUpperCase() // Unique code for QR
 
-    // Assuming single restaurant for now
-    const restaurant = await prisma.restaurant.findFirst();
-    if (!restaurant)
-      return NextResponse.json({ error: 'No restaurant found' }, { status: 400 });
-
-    const table = await prisma.table.create({
+    const newTable = await prisma.table.create({
       data: {
         number,
         capacity,
         status: 'AVAILABLE',
         token,
-        restaurantId: restaurant.id,
+        restaurantId: user.restaurantId,
       },
-    });
+    })
 
-    return NextResponse.json(table);
+    return NextResponse.json(newTable)
   } catch (error) {
-    console.error('Error creating table:', error);
-    return NextResponse.json({ error: 'Failed to create table' }, { status: 500 });
+    console.error('Error creating table:', error)
+    return NextResponse.json({ error: 'Failed to create table' }, { status: 500 })
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    const { userId } = await auth();
+     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { id, number, capacity, status } = await req.json()
 
-    const { id, number, capacity, status } = await req.json();
-
-    if (!id || !number || !capacity || !status) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!id || typeof number !== 'number' || typeof capacity !== 'number' || !['AVAILABLE', 'OCCUPIED'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid update data' }, { status: 400 })
     }
 
-    // Validate status in enum
-    const validStatus = ['AVAILABLE', 'OCCUPIED'];
-    if (!validStatus.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.restaurantId) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+
+    const table = await prisma.table.findUnique({ where: { id } })
+    if (!table || table.restaurantId !== user.restaurantId) {
+      return NextResponse.json({ error: 'Table not found or unauthorized' }, { status: 404 })
     }
 
-    const updatedTable = await prisma.table.update({
-      where: { id },
-      data: {
+    const existing = await prisma.table.findFirst({
+      where: {
         number,
-        capacity,
-        status,
+        restaurantId: user.restaurantId,
+        NOT: { id },
       },
-    });
+    })
+    if (existing) return NextResponse.json({ error: 'Table number already in use' }, { status: 409 })
 
-    return NextResponse.json(updatedTable);
+    const updated = await prisma.table.update({
+      where: { id },
+      data: { number, capacity, status },
+    })
+
+    return NextResponse.json(updated)
   } catch (error) {
-    console.error('Error updating table:', error);
-    return NextResponse.json({ error: 'Failed to update table' }, { status: 500 });
+    console.error('Error updating table:', error)
+    return NextResponse.json({ error: 'Failed to update table' }, { status: 500 })
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const id = req.nextUrl.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'Missing table id' }, { status: 400 })
+
+     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.restaurantId) return NextResponse.json({ error: 'Access denied' }, { status: 403 })
 
-    const id = req.nextUrl.searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    const table = await prisma.table.findUnique({ where: { id } })
+    if (!table || table.restaurantId !== user.restaurantId) {
+      return NextResponse.json({ error: 'Table not found or unauthorized' }, { status: 404 })
+    }
 
-    // Optionally, check for sessions/orders before deleting
+    // Optional: prohibit deletion when active orders exist - implement as needed
 
-    await prisma.table.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true });
+    await prisma.table.delete({ where: { id } })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting table:', error);
-    return NextResponse.json({ error: 'Failed to delete table' }, { status: 500 });
+    console.error('Error deleting table:', error)
+    return NextResponse.json({ error: 'Failed to delete table' }, { status: 500 })
   }
 }
