@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = "force-dynamic";
 import useSWR from 'swr'
 import { Button } from '@/components/ui/Button'
 
