@@ -87,9 +87,9 @@ export default function AdminNavbar() {
                   key={item.name}
                   href={item.href}
                   className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    isActive
-                      ? 'bg-accent text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  isActive
+                    ? 'bg-accent text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                   onClick={() => setMenuOpen(false)}
                 >

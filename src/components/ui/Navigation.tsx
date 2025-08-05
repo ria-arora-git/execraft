@@ -22,7 +22,7 @@ const navigation = [
   { name: 'Recipes', href: '/admin/recipes', icon: ChefHat },
   { name: 'Order History', href: '/admin/order-history', icon: ShoppingCart },
   { name: 'Table Management', href: '/admin/table-management', icon: Table },
-  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Active Orders', href: '/admin/active-orders', icon: BarChart3 },
 ]
 
 export function Navigation() {
@@ -30,10 +30,10 @@ export function Navigation() {
 
   return (
     <nav className="bg-blueBase shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/admin" className="flex-shrink-0 flex items-center">
+            <Link href="/admin" className="flex-shrink-0 flex items-center pr-20">
               <ChefHat className="h-8 w-8 text-accent" />
               <span className="ml-2 text-xl font-bold text-white">RestaurantOS</span>
             </Link>
@@ -63,7 +63,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Bell className="h-6 w-6 text-slate-300 hover:text-white cursor-pointer" />
+   
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>

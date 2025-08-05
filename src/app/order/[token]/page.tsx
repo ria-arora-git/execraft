@@ -32,8 +32,7 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
 
   useEffect(() => {
     async function fetchTableAndMenu() {
@@ -52,6 +51,12 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         if (!resMenu.ok) throw new Error('Failed to load menu')
         const menuData = await resMenu.json()
         setMenuItems(menuData)
+        
+        // Set first category as active if items exist
+        if (menuData.length > 0) {
+          const categories = [...new Set(menuData.map((item: MenuItem) => item.category))]
+          setActiveCategory(categories[0] || 'all')
+        }
       } catch (error) {
         toast.error((error as Error).message || 'Failed to load data')
         setTable(null)
@@ -99,10 +104,6 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
       toast.error('Invalid table')
       return
     }
-    if (!customerName.trim()) {
-      toast.error('Please enter your name')
-      return
-    }
     if (cart.length === 0) {
       toast.error('Please add at least one item to cart')
       return
@@ -110,8 +111,8 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
 
     const orderBody = {
       tableId: table.id,
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
+      customerName: `Table ${table.number} Customer`, // Auto-generate customer name
+      customerPhone: '', // Leave empty since we removed the input
       items: cart.map(({ menuItemId, quantity }) => ({
         menuItemId,
         quantity,
@@ -130,20 +131,28 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         return
       }
       toast.success('Order placed successfully')
-      // Reset form
       setCart([])
-      setCustomerName('')
-      setCustomerPhone('')
-      router.push(`/order/${params.token}/confirmation`) // Optional - confirmation page
+      router.push(`/order/${params.token}/confirmation`)
     } catch (error) {
       toast.error('Network error on placing order')
     }
   }
 
+  // Get unique categories
+  const categories = ['all', ...new Set(menuItems.map(item => item.category))]
+  
+  // Filter items by active category
+  const filteredItems = activeCategory === 'all' 
+    ? menuItems 
+    : menuItems.filter(item => item.category === activeCategory)
+
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-blueDark text-white">
-        Loading...
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-lg">Loading menu...</p>
+        </div>
       </div>
     )
 
@@ -159,84 +168,155 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
     )
 
   return (
-    <div className="min-h-screen bg-blueDark text-white p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Table {table.number} - {table.restaurantName}</h1>
-      <p className="mb-6 text-slate-400">Capacity: {table.capacity} {table.capacity === 1 ? 'person' : 'people'}</p>
-
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Your Info</h2>
-        <div className="flex flex-col space-y-4 max-w-md">
-          <input
-            type="text"
-            placeholder="Your Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className="p-3 rounded bg-blueBase border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-          <input
-            type="tel"
-            placeholder="Phone Number (Optional)"
-            value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
-            className="p-3 rounded bg-blueBase border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-accent"
-          />
+    <div className="min-h-screen bg-blueDark text-white">
+      {/* Header */}
+      <div className="bg-blueBase shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-2">{table.restaurantName}</h1>
+            <p className="text-accent text-lg">Table {table.number} • Capacity: {table.capacity} {table.capacity === 1 ? 'person' : 'people'}</p>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Menu</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {menuItems.map((menu) => {
-            const cartItem = cart.find((ci) => ci.menuItemId === menu.id)
-            return (
-              <div
-                key={menu.id}
-                className="bg-blueBase rounded-lg p-6 flex flex-col justify-between shadow"
-              >
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">{menu.name}</h3>
-                  <p className="text-slate-400 mb-4">{menu.description}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-accent font-bold text-xl">${menu.price.toFixed(2)}</span>
-                  {cartItem ? (
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => updateQuantity(menu.id, cartItem.quantity - 1)}
-                        className="bg-blueDark rounded-full w-8 h-8 text-white hover:bg-blue-600"
-                        aria-label={`Decrease quantity of ${menu.name}`}
-                      >
-                        −
-                      </button>
-                      <span>{cartItem.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(menu.id, cartItem.quantity + 1)}
-                        className="bg-accent rounded-full w-8 h-8 text-white hover:bg-green-600"
-                        aria-label={`Increase quantity of ${menu.name}`}
-                      >
-                        +
-                      </button>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar - Categories */}
+          <div className="lg:w-1/4">
+            <div className="bg-blueBase rounded-lg p-6 sticky top-8">
+              <h2 className="text-xl font-bold mb-4">Categories</h2>
+              <nav className="space-y-2">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors capitalize ${
+                      activeCategory === category
+                        ? 'bg-accent text-white font-semibold'
+                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    }`}
+                  >
+                    {category === 'all' ? 'All Items' : category}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Cart Summary in Sidebar */}
+              {cart.length > 0 && (
+                <div className="mt-8 pt-6 border-t border-slate-600">
+                  <h3 className="text-lg font-semibold mb-4">Your Order ({cart.length} items)</h3>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {cart.map((item) => (
+                      <div key={item.menuItemId} className="flex justify-between items-center text-sm">
+                        <div className="flex-1">
+                          <p className="font-medium truncate">{item.menuItem.name}</p>
+                          <p className="text-slate-400">${item.menuItem.price.toFixed(2)} x {item.quantity}</p>
+                        </div>
+                        <p className="text-accent font-semibold ml-2">
+                          ${(item.menuItem.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-600">
+                    <div className="flex justify-between items-center text-xl font-bold">
+                      <span>Total:</span>
+                      <span className="text-accent">${totalPrice.toFixed(2)}</span>
                     </div>
-                  ) : (
-                    <Button onClick={() => addToCart(menu)}>Add</Button>
-                  )}
+                    <Button 
+                      onClick={handlePlaceOrder} 
+                      className="w-full mt-4 bg-accent hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
+                    >
+                      Place Order
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
+              )}
+            </div>
+          </div>
 
-      {/* Order summary & place order */}
-      <section className="sticky bottom-0 bg-blueBase p-4 rounded-t-lg shadow-lg max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-white text-xl font-bold">Total:</span>
-          <span className="text-accent text-xl font-bold">${totalPrice.toFixed(2)}</span>
+          {/* Main Content - Menu Items */}
+          <div className="lg:w-3/4">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold capitalize">
+                {activeCategory === 'all' ? 'All Menu Items' : activeCategory}
+              </h2>
+              <p className="text-slate-400 mt-1">
+                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} available
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredItems.map((menu) => {
+                const cartItem = cart.find((ci) => ci.menuItemId === menu.id)
+                return (
+                  <div
+                    key={menu.id}
+                    className="bg-blueBase rounded-xl p-6 flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow"
+                  >
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold mb-2">{menu.name}</h3>
+                      <p className="text-slate-400 mb-4 line-clamp-3">{menu.description}</p>
+                      <p className="text-accent font-bold text-2xl mb-4">${menu.price.toFixed(2)}</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      {cartItem ? (
+                        <div className="flex items-center space-x-3 bg-blueDark rounded-lg p-2">
+                          <button
+                            onClick={() => updateQuantity(menu.id, cartItem.quantity - 1)}
+                            className="bg-slate-600 hover:bg-slate-500 rounded-full w-8 h-8 text-white font-bold transition-colors"
+                            aria-label={`Decrease quantity of ${menu.name}`}
+                          >
+                            −
+                          </button>
+                          <span className="font-semibold min-w-[2rem] text-center">{cartItem.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(menu.id, cartItem.quantity + 1)}
+                            className="bg-accent hover:bg-green-600 rounded-full w-8 h-8 text-white font-bold transition-colors"
+                            aria-label={`Increase quantity of ${menu.name}`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={() => addToCart(menu)}
+                          className="bg-accent hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          Add to Cart
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {filteredItems.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-slate-400 text-lg">No items found in this category.</p>
+              </div>
+            )}
+          </div>
         </div>
-        <Button onClick={handlePlaceOrder} disabled={cart.length === 0 || !customerName.trim()}>
-          Place Order
-        </Button>
-      </section>
+      </div>
+
+      {/* Mobile Cart Summary - Fixed Bottom */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-4 left-4 right-4 bg-blueBase rounded-xl p-4 shadow-2xl border border-slate-600">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-white font-semibold">{cart.length} items</span>
+            <span className="text-accent font-bold text-xl">${totalPrice.toFixed(2)}</span>
+          </div>
+          <Button 
+            onClick={handlePlaceOrder} 
+            className="w-full bg-accent hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
+          >
+            Place Order
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
