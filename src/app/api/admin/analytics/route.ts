@@ -14,8 +14,7 @@ export async function GET() {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Aggregate data
-    const totalOrders = await prisma.order.count();
+    // Get today's orders properly
     const todayOrders = await prisma.order.findMany({
       where: {
         createdAt: {
@@ -26,32 +25,31 @@ export async function GET() {
 
     const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
     
-    const lowStockCount = await prisma.inventoryItem.count({
+    // Get active orders count (not PAID or CANCELLED)
+    const activeOrdersCount = await prisma.order.count({
+      where: {
+        status: {
+          notIn: ['PAID', 'CANCELLED'],
+        },
+      },
+    });
+
+    // Get low stock items
+    const lowStockItems = await prisma.inventoryItem.findMany({
       where: {
         quantity: {
           lte: prisma.inventoryItem.fields.minStock,
         },
       },
     });
-    
-    const activeOrdersCount = await prisma.order.count({
-      where: {
-        status: {
-          not: 'PAID',
-        },
-      },
-    });
-
-    const totalMenuItems = await prisma.menuItem.count();
-    const totalInventoryItems = await prisma.inventoryItem.count();
 
     const data = {
-      totalOrders,
+      todayOrders: todayOrders.length,
       todayRevenue,
-      lowStockCount,
+      lowStockCount: lowStockItems.length,
       activeOrdersCount,
-      totalMenuItems,
-      totalInventoryItems,
+      totalMenuItems: await prisma.menuItem.count(),
+      totalInventoryItems: await prisma.inventoryItem.count(),
     };
 
     return NextResponse.json(data);

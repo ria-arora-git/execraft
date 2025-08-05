@@ -53,6 +53,8 @@ export function AlertsManager() {
       if (res.ok) {
         setAlerts(alerts.filter(alert => alert.id !== id))
         toast.success('Alert acknowledged')
+      } else {
+        toast.error('Failed to acknowledge alert')
       }
     } catch (error) {
       toast.error('Failed to acknowledge alert')
@@ -105,7 +107,7 @@ export function AlertsManager() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center mb-2">
-                        <AlertTriangle className="h-4 w-4 text-warning mr-2" />
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2" />
                         <span className="text-sm font-medium text-white">
                           Low Stock Alert
                         </span>

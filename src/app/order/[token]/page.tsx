@@ -99,44 +99,49 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
     0
   )
 
-  async function handlePlaceOrder() {
-    if (!table) {
-      toast.error('Invalid table')
-      return
-    }
-    if (cart.length === 0) {
-      toast.error('Please add at least one item to cart')
-      return
-    }
+ // In the handlePlaceOrder function, replace the router.push line:
 
-    const orderBody = {
-      tableId: table.id,
-      customerName: `Table ${table.number} Customer`, // Auto-generate customer name
-      customerPhone: '', // Leave empty since we removed the input
-      items: cart.map(({ menuItemId, quantity }) => ({
-        menuItemId,
-        quantity,
-      })),
-    }
-
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderBody),
-      })
-      if (!res.ok) {
-        const error = await res.json()
-        toast.error(error.error || 'Failed to place order')
-        return
-      }
-      toast.success('Order placed successfully')
-      setCart([])
-      router.push(`/order/${params.token}/confirmation`)
-    } catch (error) {
-      toast.error('Network error on placing order')
-    }
+async function handlePlaceOrder() {
+  if (!table) {
+    toast.error('Invalid table')
+    return
   }
+  if (cart.length === 0) {
+    toast.error('Please add at least one item to cart')
+    return
+  }
+
+  const orderBody = {
+    tableId: table.id,
+    customerName: `Table ${table.number} Customer`,
+    customerPhone: '',
+    items: cart.map(({ menuItemId, quantity }) => ({
+      menuItemId,
+      quantity,
+    })),
+  }
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderBody),
+    })
+    if (!res.ok) {
+      const error = await res.json()
+      toast.error(error.error || 'Failed to place order')
+      return
+    }
+    const order = await res.json()
+    toast.success('Order placed successfully')
+    setCart([])
+    // Fixed: Navigate to confirmation page with order ID
+    router.push(`/order/${params.token}/confirmation`)
+  } catch (error) {
+    toast.error('Network error on placing order')
+  }
+}
+
 
   // Get unique categories
   const categories = ['all', ...new Set(menuItems.map(item => item.category))]
