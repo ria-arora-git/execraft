@@ -1,5 +1,5 @@
 'use client'
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -17,9 +17,7 @@ interface InventoryItem {
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quantityChanges, setQuantityChanges] = useState<
-    Record<string, number | "">
-  >({});
+  const [quantityChanges, setQuantityChanges] = useState<Record<string, number | "">>({});
   const [savingState, setSavingState] = useState<Record<string, boolean>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmItem, setConfirmItem] = useState<InventoryItem | null>(null);
@@ -104,19 +102,16 @@ export default function InventoryPage() {
     e.preventDefault();
     const { name, unit, quantity, minStock } = newItem;
 
-    // Validation for empty fields
     if (!name.trim() || !unit.trim() || quantity === "" || minStock === "") {
       toast.error("Please fill all the fields");
       return;
     }
 
-    // Quantity fields must be non-negative numbers
     if (Number(quantity) < 0 || Number(minStock) < 0) {
       toast.error("Quantity fields must be non-negative numbers");
       return;
     }
 
-    // Unit validation: text-only (letters only), 1-10 chars
     if (!/^[a-zA-Z]{1,10}$/.test(unit.trim())) {
       toast.error("Unit must be text only (e.g., pcs, kg)");
       return;
@@ -170,9 +165,6 @@ export default function InventoryPage() {
     if (!confirmItem) return;
     setDeleting(true);
     try {
-      // Optionally delete dependent usages via API if cascade wanted
-      // await fetch(`/api/recipes?inventoryItemId=${confirmItem.id}`, { method: 'DELETE' })
-
       const res = await fetch(`/api/inventory?id=${confirmItem.id}`, {
         method: "DELETE",
       });
@@ -198,7 +190,6 @@ export default function InventoryPage() {
 
   return (
     <div className="p-8 bg-blueDark min-h-screen space-y-8">
-      {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <h1 className="text-3xl font-bold text-white">Inventory Management</h1>
         <Button
@@ -210,7 +201,6 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      {/* New Inventory Form */}
       {showNewForm && (
         <form
           id="new-inventory-form"
@@ -290,7 +280,6 @@ export default function InventoryPage() {
         </form>
       )}
 
-      {/* Inventory Cards */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {items.map((item) => {
           const changeVal = quantityChanges[item.id];
@@ -303,7 +292,6 @@ export default function InventoryPage() {
               key={item.id}
               className="bg-blueBase p-6 rounded-3xl shadow-lg flex flex-col relative"
             >
-              {/* Trash Icon */}
               <button
                 className="absolute top-0 right-0 p-2 text-slate-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-600"
                 onClick={() => handleDeleteRequest(item)}
@@ -396,12 +384,11 @@ export default function InventoryPage() {
                 <p className="mb-2 text-slate-300">
                   <strong>This ingredient is used in:</strong>
                 </p>
-                <ul>
+                <ul className="list-disc list-inside max-h-48 overflow-y-auto mb-4">
                   {recipesList.map((recipeName) => (
                     <li key={recipeName}>{recipeName}</li>
                   ))}
                 </ul>
-
                 <p className="mb-4 text-red-400 font-medium">
                   If you delete this ingredient, it will be removed from all
                   above recipes.
