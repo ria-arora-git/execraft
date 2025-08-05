@@ -1,49 +1,23 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
-const isProtectedRoute = createRouteMatcher([
-  '/admin(.*)',
-]);
+const isProtectedRoute = createRouteMatcher(['/admin(.*)']);
+// Add exclusion for the select organization page:
+const isSelectOrgRoute = createRouteMatcher(['/admin/select-organization']);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Protect admin routes
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+  // Allow access to select-org page regardless of orgId
+  if (isSelectOrgRoute(req)) {
+    return NextResponse.next();
   }
 
-  const { userId } = await auth();
-  
-  // Auto-create user in database if authenticated and doesn't exist
-  if (userId) {
-    try {
-      const user = await auth.user;
-      if (user?.emailAddresses?.[0]?.emailAddress) {
-        const existingUser = await prisma.user.findUnique({
-          where: { id: userId }
-        });
+  if (isProtectedRoute(req)) {
+    await auth.protect();
 
-        if (!existingUser) {
-          // Find or create default restaurant
-          let restaurant = await prisma.restaurant.findFirst();
-          if (!restaurant) {
-            restaurant = await prisma.restaurant.create({
-              data: { name: 'Default Restaurant' }
-            });
-          }
-
-          // Create user
-          await prisma.user.create({
-            data: {
-              id: userId,
-              email: user.emailAddresses[0].emailAddress,
-              restaurantId: restaurant.id,
-            }
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error creating user:', error);
+    const { orgId } = await auth(); // always get the current orgId
+    if (!orgId) {
+      // Only redirect if NOT already on select organization page
+      return NextResponse.redirect(new URL('/admin/select-organization', req.url));
     }
   }
 
@@ -52,6 +26,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
+    // You may want to mirror your old array + catch api public endpoints as well
     '/((?!.*\\..*|_next).*)',
     '/',
     '/(api|trpc)(.*)',

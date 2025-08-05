@@ -1,28 +1,37 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { getRestaurantContext } from '@/lib/restaurant-context'
 
 export async function GET() {
-  const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
   try {
+    const { restaurantId } = await getRestaurantContext()
+
     const tables = await prisma.table.findMany({
       where: {
+        restaurantId,
         orders: {
-          some: { status: { not: 'PAID' } }
+          some: { 
+            status: { notIn: ['PAID', 'CANCELLED'] },
+            restaurantId
+          }
         }
       },
-      include: { orders: true },
+      include: { 
+        orders: {
+          where: {
+            restaurantId,
+            status: { notIn: ['PAID', 'CANCELLED'] }
+          }
+        }
+      },
     })
 
     return NextResponse.json(tables)
   } catch (error) {
     console.error('Error fetching active orders tables:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch tables with active orders' },
-      { status: 500 }
+      { error: 'Unauthorized or failed to fetch tables with active orders' },
+      { status: 401 }
     )
   }
 }

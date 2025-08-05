@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, OrganizationSwitcher } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -11,7 +11,6 @@ import {
   ChefHat,
   ShoppingCart,
   BarChart3,
-  Bell,
   Table
 } from 'lucide-react'
 
@@ -33,7 +32,7 @@ export function Navigation() {
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/admin" className="flex-shrink-0 flex items-center pr-20">
+            <Link href="/admin" className="flex-shrink-0 flex items-center pr-8">
               <ChefHat className="h-8 w-8 text-accent" />
               <span className="ml-2 text-xl font-bold text-white">RestaurantOS</span>
             </Link>
@@ -63,7 +62,23 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-4">
-   
+            <OrganizationSwitcher 
+              hidePersonal
+              afterLeaveOrganizationUrl="/admin/select-organization"
+              afterSelectOrganizationUrl="/admin"
+              appearance={{
+                elements: {
+                  organizationSwitcherTrigger: 'bg-blueDark border border-slate-600 text-white hover:bg-slate-700 px-3 py-2 rounded-md',
+                  organizationPreview: 'bg-blueDark border border-slate-600 text-white',
+                  card: 'bg-blueBase border border-slate-700',
+                  headerTitle: 'text-white',
+                  headerSubtitle: 'text-slate-300',
+                  formButtonPrimary: 'bg-accent hover:bg-accent/90',
+                  formFieldInput: 'bg-blueDark border-slate-600 text-white',
+                  formFieldLabel: 'text-slate-300',
+                }
+              }}
+            />
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>

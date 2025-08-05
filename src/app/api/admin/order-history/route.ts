@@ -1,30 +1,23 @@
-export const dynamic = "force-dynamic";
-
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getRestaurantContext } from '@/lib/restaurant-context'
 
-export async function GET(req: NextRequest) {
-  const url = new URL(req.url)
-  const date = url.searchParams.get('date')
-  const skip = parseInt(url.searchParams.get('skip') ?? '0')
-  const take = parseInt(url.searchParams.get('take') ?? '20')
+export async function GET() {
+  try {
+    const { restaurantId } = await getRestaurantContext()
 
-  let dateFilter = {}
-  if (date) {
-    const start = new Date(date)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(date)
-    end.setHours(23, 59, 59, 999)
-    dateFilter = { createdAt: { gte: start, lte: end } }
+    const orders = await prisma.order.findMany({
+      where: { restaurantId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: { include: { menuItem: true } },
+        table: true
+      }
+    })
+
+    return NextResponse.json(orders)
+  } catch (error) {
+    console.error('Failed to fetch order history:', error)
+    return NextResponse.json({ error: 'Unauthorized or failed to fetch order history' }, { status: 401 })
   }
-
-  const orders = await prisma.order.findMany({
-    where: dateFilter,
-    include: { table: true },
-    orderBy: { createdAt: 'desc' },
-    skip,
-    take,
-  })
-
-  return NextResponse.json(orders)
 }

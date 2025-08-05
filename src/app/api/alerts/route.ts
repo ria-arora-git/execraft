@@ -1,60 +1,54 @@
-export const dynamic = "force-dynamic";
-
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getRestaurantContext } from "@/lib/restaurant-context";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { restaurantId } = await getRestaurantContext();
+
+    const alerts = await prisma.stockAlert.findMany({
+      where: {
+        acknowledged: false,
+        inventoryItem: { restaurantId },
+      },
+      include: { inventoryItem: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(alerts);
+  } catch (error) {
+    console.error("Failed to fetch alerts:", error);
+    return NextResponse.json([], { status: 200 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { restaurantId } = await getRestaurantContext();
+    const { id, acknowledged } = await req.json();
+
+    if (!id || typeof acknowledged !== "boolean") {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Get today's orders properly
-    const todayOrders = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: startOfDay,
-        },
-      },
+    // Verify alert ownership
+    const alert = await prisma.stockAlert.findUnique({
+      where: { id },
+      include: { inventoryItem: true },
     });
 
-    const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0);
-    
-    // Get active orders count (not PAID or CANCELLED)
-    const activeOrdersCount = await prisma.order.count({
-      where: {
-        status: {
-          notIn: ['PAID', 'CANCELLED'],
-        },
-      },
+    if (!alert || alert.inventoryItem.restaurantId !== restaurantId) {
+      return NextResponse.json({ error: "Unauthorized" }, {status: 403});
+    }
+
+    const updatedAlert = await prisma.stockAlert.update({
+      where: { id },
+      data: { acknowledged },
     });
 
-    // Get low stock items
-    const lowStockItems = await prisma.inventoryItem.findMany({
-      where: {
-        quantity: {
-          lte: prisma.inventoryItem.fields.minStock,
-        },
-      },
-    });
-
-    const data = {
-      todayOrders: todayOrders.length,
-      todayRevenue,
-      lowStockCount: lowStockItems.length,
-      activeOrdersCount,
-      totalMenuItems: await prisma.menuItem.count(),
-      totalInventoryItems: await prisma.inventoryItem.count(),
-    };
-
-    return NextResponse.json(data);
+    return NextResponse.json(updatedAlert);
   } catch (error) {
-    console.error('Failed to fetch analytics:', error);
-    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
+    console.error("Failed to update alert:", error);
+    return NextResponse.json({ error: "Failed to update alert" }, { status: 500 });
   }
 }
