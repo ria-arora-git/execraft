@@ -8,9 +8,8 @@ import toast from 'react-hot-toast'
 interface MenuItem {
   id: string
   name: string
-  description: string
-  price: number
-  category: string
+  price?: number
+  category?: string | null
 }
 
 interface CartItem {
@@ -26,7 +25,13 @@ interface Table {
   restaurantName: string
 }
 
-export default function CustomerOrderPage({ params }: { params: { token: string } }) {
+interface CustomerOrderPageProps {
+  params: {
+    token: string
+  }
+}
+
+export default function CustomerOrderPage({ params }: CustomerOrderPageProps) {
   const router = useRouter()
   const [table, setTable] = useState<Table | null>(null)
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -44,20 +49,22 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
           body: JSON.stringify({ token: params.token }),
         })
         if (!resTable.ok) throw new Error('Invalid table token')
-        const tableData = await resTable.json()
+        const tableData: Table = await resTable.json()
         setTable(tableData)
 
-        // Fetch menu items for this restaurant using table token
         const resMenu = await fetch(`/api/menu?tableToken=${params.token}`)
         if (!resMenu.ok) throw new Error('Failed to load menu')
-        const menuData = await resMenu.json()
+        const menuData: MenuItem[] = await resMenu.json()
         setMenuItems(menuData)
-        
-        // Set first category as active if items exist
-        if (menuData.length > 0) {
-          const categories = [...new Set(menuData.map((item: MenuItem) => item.category))]
-          setActiveCategory(categories[0] || 'all')
-        }
+
+        // Extract valid, non-empty categories
+        const categories = [...new Set(
+          menuData
+            .map(item => item.category)
+            .filter((cat): cat is string => typeof cat === 'string' && cat.trim().length > 0)
+        )]
+
+        setActiveCategory(categories.length > 0 ? categories[0] : 'all')
       } catch (error) {
         toast.error((error as Error).message || 'Failed to load data')
         setTable(null)
@@ -70,13 +77,11 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
   }, [params.token])
 
   function addToCart(menuItem: MenuItem) {
-    setCart((prev) => {
-      const exists = prev.find((item) => item.menuItemId === menuItem.id)
+    setCart(prev => {
+      const exists = prev.find(item => item.menuItemId === menuItem.id)
       if (exists) {
-        return prev.map((item) =>
-          item.menuItemId === menuItem.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        return prev.map(item =>
+          item.menuItemId === menuItem.id ? { ...item, quantity: item.quantity + 1 } : item
         )
       }
       return [...prev, { menuItemId: menuItem.id, menuItem, quantity: 1 }]
@@ -85,20 +90,18 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
 
   function updateQuantity(menuItemId: string, quantity: number) {
     if (quantity <= 0) {
-      setCart((prev) => prev.filter((item) => item.menuItemId !== menuItemId))
+      setCart(prev => prev.filter(item => item.menuItemId !== menuItemId))
     } else {
-      setCart((prev) =>
-        prev.map((item) =>
-          item.menuItemId === menuItemId ? { ...item, quantity } : item
-        )
+      setCart(prev =>
+        prev.map(item => (item.menuItemId === menuItemId ? { ...item, quantity } : item))
       )
     }
   }
 
-  const totalPrice = cart.reduce(
-    (sum, item) => sum + item.menuItem.price * item.quantity,
-    0
-  )
+  const totalPrice = cart.reduce((sum, item) => {
+    const price = item.menuItem.price ?? 0
+    return sum + price * item.quantity
+  }, 0)
 
   async function handlePlaceOrder() {
     if (!table) {
@@ -114,10 +117,7 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
       tableId: table.id,
       customerName: `Table ${table.number} Customer`,
       customerPhone: '',
-      items: cart.map(({ menuItemId, quantity }) => ({
-        menuItemId,
-        quantity,
-      })),
+      items: cart.map(({ menuItemId, quantity }) => ({ menuItemId, quantity })),
     }
 
     try {
@@ -127,28 +127,30 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         body: JSON.stringify(orderBody),
       })
       if (!res.ok) {
-        const error = await res.json()
-        toast.error(error.error || 'Failed to place order')
+        const errorData = await res.json()
+        toast.error(errorData.error || 'Failed to place order')
         return
       }
-      const order = await res.json()
       toast.success('Order placed successfully')
       setCart([])
       router.push(`/order/${params.token}/confirmation`)
-    } catch (error) {
+    } catch {
       toast.error('Network error on placing order')
     }
   }
 
-  // Get unique categories
-  const categories = ['all', ...new Set(menuItems.map(item => item.category))]
-  
-  // Filter items by active category
-  const filteredItems = activeCategory === 'all' 
-    ? menuItems 
+  // Include 'all' in categories list
+  const categories = ['all', ...Array.from(new Set(
+    menuItems
+      .map(item => item.category)
+      .filter((cat): cat is string => typeof cat === 'string' && cat.trim().length > 0)
+  ))]
+
+  const filteredItems = activeCategory === 'all'
+    ? menuItems
     : menuItems.filter(item => item.category === activeCategory)
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blueDark text-white">
         <div className="text-center">
@@ -157,17 +159,18 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         </div>
       </div>
     )
+  }
 
-  if (!table)
+  if (!table) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-blueDark text-white p-4">
         <h2 className="text-3xl mb-4">Invalid Table QR Code</h2>
         <p className="mb-6 text-center">
-          The scanned QR code is invalid. Please use a valid QR code or contact
-          restaurant staff.
+          The scanned QR code is invalid. Please use a valid QR code or contact restaurant staff.
         </p>
       </div>
     )
+  }
 
   return (
     <div className="min-h-screen bg-blueDark text-white">
@@ -176,24 +179,26 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-2">{table.restaurantName}</h1>
-            <p className="text-accent text-lg">Table {table.number} • Capacity: {table.capacity} {table.capacity === 1 ? 'person' : 'people'}</p>
+            <p className="text-accent text-lg">
+              Table {table.number} &bull; Capacity: {table.capacity} {table.capacity === 1 ? 'person' : 'people'}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar - Categories */}
+          {/* Sidebar: Categories and Cart Summary */}
           <div className="lg:w-1/4">
             <div className="bg-blueBase rounded-lg p-6 sticky top-8">
               <h2 className="text-xl font-bold mb-4">Categories</h2>
               <nav className="space-y-2">
-                {categories.map((category) => (
+                {categories.map(category => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors capitalize ${
-                      activeCategory === category
+                      category === activeCategory
                         ? 'bg-accent text-white font-semibold'
                         : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                     }`}
@@ -203,19 +208,18 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
                 ))}
               </nav>
 
-              {/* Cart Summary in Sidebar */}
               {cart.length > 0 && (
                 <div className="mt-8 pt-6 border-t border-slate-600">
                   <h3 className="text-lg font-semibold mb-4">Your Order ({cart.length} items)</h3>
                   <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {cart.map((item) => (
+                    {cart.map(item => (
                       <div key={item.menuItemId} className="flex justify-between items-center text-sm">
                         <div className="flex-1">
                           <p className="font-medium truncate">{item.menuItem.name}</p>
-                          <p className="text-slate-400">${item.menuItem.price.toFixed(2)} x {item.quantity}</p>
+                          <p className="text-slate-400">${(item.menuItem.price ?? 0).toFixed(2)} x {item.quantity}</p>
                         </div>
                         <p className="text-accent font-semibold ml-2">
-                          ${(item.menuItem.price * item.quantity).toFixed(2)}
+                          ${((item.menuItem.price ?? 0) * item.quantity).toFixed(2)}
                         </p>
                       </div>
                     ))}
@@ -225,8 +229,8 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
                       <span>Total:</span>
                       <span className="text-accent">${totalPrice.toFixed(2)}</span>
                     </div>
-                    <Button 
-                      onClick={handlePlaceOrder} 
+                    <Button
+                      onClick={handlePlaceOrder}
                       className="w-full mt-4 bg-accent hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
                     >
                       Place Order
@@ -237,7 +241,7 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
             </div>
           </div>
 
-          {/* Main Content - Menu Items */}
+          {/* Menu Items */}
           <div className="lg:w-3/4">
             <div className="mb-6">
               <h2 className="text-2xl font-bold capitalize">
@@ -249,8 +253,8 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredItems.map((menu) => {
-                const cartItem = cart.find((ci) => ci.menuItemId === menu.id)
+              {filteredItems.map(menu => {
+                const cartItem = cart.find(ci => ci.menuItemId === menu.id)
                 return (
                   <div
                     key={menu.id}
@@ -258,10 +262,9 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
                   >
                     <div className="flex-1">
                       <h3 className="text-xl font-semibold mb-2">{menu.name}</h3>
-                      <p className="text-slate-400 mb-4 line-clamp-3">{menu.description}</p>
-                      <p className="text-accent font-bold text-2xl mb-4">${menu.price.toFixed(2)}</p>
+                      <p className="text-accent font-bold text-2xl mb-4">${(menu.price ?? 0).toFixed(2)}</p>
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       {cartItem ? (
                         <div className="flex items-center space-x-3 bg-blueDark rounded-lg p-2">
@@ -282,7 +285,7 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
                           </button>
                         </div>
                       ) : (
-                        <Button 
+                        <Button
                           onClick={() => addToCart(menu)}
                           className="bg-accent hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                         >
@@ -304,15 +307,15 @@ export default function CustomerOrderPage({ params }: { params: { token: string 
         </div>
       </div>
 
-      {/* Mobile Cart Summary - Fixed Bottom */}
+      {/* Mobile Cart Summary Fixed Bottom */}
       {cart.length > 0 && (
         <div className="lg:hidden fixed bottom-4 left-4 right-4 bg-blueBase rounded-xl p-4 shadow-2xl border border-slate-600">
           <div className="flex justify-between items-center mb-3">
             <span className="text-white font-semibold">{cart.length} items</span>
             <span className="text-accent font-bold text-xl">${totalPrice.toFixed(2)}</span>
           </div>
-          <Button 
-            onClick={handlePlaceOrder} 
+          <Button
+            onClick={handlePlaceOrder}
             className="w-full bg-accent hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
           >
             Place Order
