@@ -6,10 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.28.1",
