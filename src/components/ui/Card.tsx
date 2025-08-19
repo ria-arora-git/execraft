@@ -14,7 +14,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     
     return (
       <Component
-        ref={ref as any}
+        ref={ref as React.Ref<HTMLButtonElement>}
         className={cn(
           // Base styles
           'rounded-xl border bg-surface-main text-foreground transition-all duration-200',

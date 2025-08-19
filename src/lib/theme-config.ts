@@ -1,5 +1,92 @@
-import { Theme, ColorPalette, SemanticColors } from '@/types/types'
 
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+export interface ColorPalette {
+  50: string
+  100: string
+  200: string
+  300: string
+  400: string
+  500: string
+  600: string
+  700: string
+  800: string
+  900: string
+  950: string
+}
+
+export interface SemanticColor {
+  light: string
+  main: string
+  dark: string
+  contrastText: string
+}
+
+export interface SemanticColors {
+  success: SemanticColor
+  error: SemanticColor
+  warning: SemanticColor
+  info: SemanticColor
+}
+
+export interface BackgroundColors {
+  main: string
+  paper: string
+  default: string
+}
+
+export interface SurfaceColors {
+  main: string
+  variant: string
+}
+
+export interface TextColors {
+  primary: string
+  secondary: string
+  disabled: string
+  inverse: string
+}
+
+export interface BorderColors {
+  main: string
+  light: string
+  dark: string
+}
+
+export interface ThemeColors {
+  primary: ColorPalette
+  secondary: ColorPalette
+  background: BackgroundColors
+  surface: SurfaceColors
+  text: TextColors
+  border: BorderColors
+  semantic: SemanticColors
+}
+
+export interface Theme {
+  name: string
+  mode: 'light' | 'dark'
+  colors: ThemeColors
+  spacing: Record<string, string>
+  typography: {
+    fontFamily: Record<string, string[]>
+    fontSize: Record<string, [string, { lineHeight: string; letterSpacing: string }]>
+    fontWeight: Record<string, string>
+  }
+  shadows: Record<string, string>
+  borderRadius: Record<string, string>
+  breakpoints: Record<string, string>
+  zIndex: Record<string, number>
+}
+
+export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeName = 'light' | 'dark' | 'restaurant'
+
+// ============================================================================
+// COLOR PALETTES
+// ============================================================================
 
 const bluePalette: ColorPalette = {
   50: '#eff6ff',
@@ -182,7 +269,7 @@ const baseTheme = {
       '7xl': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.025em' }],
       '8xl': ['6rem', { lineHeight: '1', letterSpacing: '-0.025em' }],
       '9xl': ['8rem', { lineHeight: '1', letterSpacing: '-0.025em' }],
-    },
+    } as Record<string, [string, { lineHeight: string; letterSpacing: string }]>,
     fontWeight: {
       thin: '100',
       extralight: '200',
@@ -367,8 +454,6 @@ export const themes = {
   restaurant: restaurantTheme,
 } as const
 
-export type ThemeName = keyof typeof themes
-
 export const themeList = Object.values(themes)
 export const themeNames = Object.keys(themes) as ThemeName[]
 
@@ -421,9 +506,29 @@ export const applyThemeToDocument = (theme: Theme) => {
   root.style.setProperty('--color-border-light', theme.colors.border.light)
   root.style.setProperty('--color-border-dark', theme.colors.border.dark)
   
+  // Apply semantic colors
+  root.style.setProperty('--color-success', theme.colors.semantic.success.main)
+  root.style.setProperty('--color-error', theme.colors.semantic.error.main)
+  root.style.setProperty('--color-warning', theme.colors.semantic.warning.main)
+  root.style.setProperty('--color-info', theme.colors.semantic.info.main)
+  
   // Apply theme class
   root.classList.remove('light', 'dark')
   root.classList.add(theme.mode)
+}
+
+// ============================================================================
+// RESPONSIVE UTILITIES
+// ============================================================================
+
+export const getBreakpointValue = (theme: Theme, breakpoint: keyof typeof theme.breakpoints): number => {
+  const value = theme.breakpoints[breakpoint]
+  return parseInt(value.replace('px', ''), 10)
+}
+
+export const isBreakpoint = (theme: Theme, breakpoint: keyof typeof theme.breakpoints): boolean => {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth >= getBreakpointValue(theme, breakpoint)
 }
 
 export default themes

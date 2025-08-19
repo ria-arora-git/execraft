@@ -1,3 +1,10 @@
+
+import React from 'react'
+
+// ============================================================================
+// THEME TYPES
+// ============================================================================
+
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface ColorPalette {
@@ -14,34 +21,65 @@ export interface ColorPalette {
   950: string
 }
 
-export interface SemanticColors {
-  success: {
-    light: string
-    main: string
-    dark: string
-    contrastText: string
-  }
-  error: {
-    light: string
-    main: string
-    dark: string
-    contrastText: string
-  }
-  warning: {
-    light: string
-    main: string
-    dark: string
-    contrastText: string
-  }
-  info: {
-    light: string
-    main: string
-    dark: string
-    contrastText: string
-  }
+export interface SemanticColor {
+  light: string
+  main: string
+  dark: string
+  contrastText: string
 }
 
-export interface SpacingScale {
+export interface SemanticColors {
+  success: SemanticColor
+  error: SemanticColor
+  warning: SemanticColor
+  info: SemanticColor
+}
+
+export interface BackgroundColors {
+  main: string
+  paper: string
+  default: string
+}
+
+export interface SurfaceColors {
+  main: string
+  variant: string
+}
+
+export interface TextColors {
+  primary: string
+  secondary: string
+  disabled: string
+  inverse: string
+}
+
+export interface BorderColors {
+  main: string
+  light: string
+  dark: string
+}
+
+export interface ThemeColors {
+  primary: ColorPalette
+  secondary: ColorPalette
+  background: BackgroundColors
+  surface: SurfaceColors
+  text: TextColors
+  border: BorderColors
+  semantic: SemanticColors
+}
+
+export interface Typography {
+  fontFamily: {
+    sans: string[]
+    serif: string[]
+    mono: string[]
+  }
+  fontSize: Record<string, [string, { lineHeight: string; letterSpacing: string }]>
+  fontWeight: Record<string, string>
+}
+
+export interface Spacing {
   xs: string
   sm: string
   md: string
@@ -54,117 +92,16 @@ export interface SpacingScale {
   '6xl': string
 }
 
-export interface TypographyScale {
-  fontFamily: {
-    sans: string[]
-    serif: string[]
-    mono: string[]
-  }
-  fontSize: {
-    xs: [string, { lineHeight: string; letterSpacing: string }]
-    sm: [string, { lineHeight: string; letterSpacing: string }]
-    base: [string, { lineHeight: string; letterSpacing: string }]
-    lg: [string, { lineHeight: string; letterSpacing: string }]
-    xl: [string, { lineHeight: string; letterSpacing: string }]
-    '2xl': [string, { lineHeight: string; letterSpacing: string }]
-    '3xl': [string, { lineHeight: string; letterSpacing: string }]
-    '4xl': [string, { lineHeight: string; letterSpacing: string }]
-    '5xl': [string, { lineHeight: string; letterSpacing: string }]
-    '6xl': [string, { lineHeight: string; letterSpacing: string }]
-    '7xl': [string, { lineHeight: string; letterSpacing: string }]
-    '8xl': [string, { lineHeight: string; letterSpacing: string }]
-    '9xl': [string, { lineHeight: string; letterSpacing: string }]
-  }
-  fontWeight: {
-    thin: string
-    extralight: string
-    light: string
-    normal: string
-    medium: string
-    semibold: string
-    bold: string
-    extrabold: string
-    black: string
-  }
-}
-
-export interface ShadowScale {
-  sm: string
-  base: string
-  md: string
-  lg: string
-  xl: string
-  '2xl': string
-  inner: string
-  none: string
-}
-
-export interface BorderRadiusScale {
-  none: string
-  sm: string
-  base: string
-  md: string
-  lg: string
-  xl: string
-  '2xl': string
-  '3xl': string
-  full: string
-}
-
 export interface Theme {
   name: string
-  mode: ThemeMode
-  colors: {
-    primary: ColorPalette
-    secondary: ColorPalette
-    background: {
-      main: string
-      paper: string
-      default: string
-    }
-    surface: {
-      main: string
-      variant: string
-    }
-    text: {
-      primary: string
-      secondary: string
-      disabled: string
-      inverse: string
-    }
-    border: {
-      main: string
-      light: string
-      dark: string
-    }
-    semantic: SemanticColors
-  }
-  spacing: SpacingScale
-  typography: TypographyScale
-  shadows: ShadowScale
-  borderRadius: BorderRadiusScale
-  breakpoints: {
-    sm: string
-    md: string
-    lg: string
-    xl: string
-    '2xl': string
-  }
-  zIndex: {
-    hide: number
-    auto: number
-    base: number
-    docked: number
-    dropdown: number
-    sticky: number
-    banner: number
-    overlay: number
-    modal: number
-    popover: number
-    skipLink: number
-    toast: number
-    tooltip: number
-  }
+  mode: 'light' | 'dark'
+  colors: ThemeColors
+  spacing: Spacing
+  typography: Typography
+  shadows: Record<string, string>
+  borderRadius: Record<string, string>
+  breakpoints: Record<string, string>
+  zIndex: Record<string, number>
 }
 
 export interface ThemeContextType {
@@ -176,135 +113,62 @@ export interface ThemeContextType {
 }
 
 // ============================================================================
+// RESPONSIVE TYPES
+// ============================================================================
+
+export interface ResponsiveContextType {
+  isMobile: boolean
+  isTablet: boolean
+  isDesktop: boolean
+  windowSize: {
+    width: number
+    height: number
+  }
+}
+
+// ============================================================================
 // COMPONENT TYPES
 // ============================================================================
 
-export interface BaseComponentProps {
-  className?: string
-  children?: React.ReactNode
-}
-
-export interface ButtonProps extends BaseComponentProps {
-  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'secondary'
-  size?: 'sm' | 'default' | 'lg' | 'xl'
-  color?: 'default' | 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'
-  disabled?: boolean
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  size?: 'default' | 'sm' | 'lg' | 'xl' | 'icon'
+  color?: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'
   loading?: boolean
   fullWidth?: boolean
   startIcon?: React.ReactNode
   endIcon?: React.ReactNode
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void
-  type?: 'button' | 'submit' | 'reset'
-  form?: string
-  'aria-label'?: string
-  'aria-describedby'?: string
 }
 
-export interface CardProps extends BaseComponentProps {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'outlined' | 'elevated'
   interactive?: boolean
   onClick?: () => void
 }
 
-export interface DrawerProps extends BaseComponentProps {
-  open: boolean
-  onClose: () => void
-  position?: 'left' | 'right' | 'top' | 'bottom'
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
-  backdrop?: boolean
-  closeOnBackdropClick?: boolean
-  closeOnEscape?: boolean
-  title?: string
-  description?: string
-}
-
-export interface ModalProps extends BaseComponentProps {
-  open: boolean
-  onClose: () => void
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full'
-  closeOnBackdropClick?: boolean
-  closeOnEscape?: boolean
-  showCloseButton?: boolean
-  title?: string
-  description?: string
-}
-
-export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
-  label?: string
-  helperText?: string
-  error?: boolean
-  errorMessage?: string
-  size?: 'sm' | 'md' | 'lg'
-  variant?: 'default' | 'outlined' | 'filled'
-  startAdornment?: React.ReactNode
-  endAdornment?: React.ReactNode
-  fullWidth?: boolean
-}
-
-export interface SelectProps<T = any> extends BaseComponentProps {
-  value?: T
-  defaultValue?: T
-  onChange?: (value: T) => void
-  options: Array<{
-    value: T
+export interface StatsCardProps extends Omit<CardProps, 'children'> {
+  title: string
+  value: string | number
+  subtitle?: string
+  icon?: React.ReactNode
+  trend?: {
+    value: number
     label: string
-    disabled?: boolean
-    startIcon?: React.ReactNode
-    endIcon?: React.ReactNode
-  }>
-  placeholder?: string
-  searchable?: boolean
-  multiple?: boolean
-  size?: 'sm' | 'md' | 'lg'
-  variant?: 'default' | 'outlined' | 'filled'
-  label?: string
-  helperText?: string
-  error?: boolean
-  errorMessage?: string
-  fullWidth?: boolean
-  disabled?: boolean
+    isPositive: boolean
+  }
+}
+
+export interface ActionCardProps extends CardProps {
+  title: string
+  description?: string
+  icon?: React.ReactNode
+  actionLabel?: string
+  onAction?: () => void
 }
 
 // ============================================================================
-// API TYPES
+// DATA TYPES
 // ============================================================================
-
-export interface ApiResponse<T = any> {
-  data?: T
-  error?: string
-  message?: string
-  success: boolean
-  status: number
-}
-
-export interface PaginationParams {
-  page?: number
-  limit?: number
-  skip?: number
-  take?: number
-}
-
-export interface SortParams {
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
-}
-
-export interface FilterParams {
-  search?: string
-  category?: string
-  status?: string
-  dateFrom?: string
-  dateTo?: string
-}
-
-export type QueryParams = PaginationParams & SortParams & FilterParams
-
-// ============================================================================
-// RESTAURANT SYSTEM TYPES
-// ============================================================================
-
-export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'SERVED' | 'PAID' | 'CANCELLED'
-export type TableStatus = 'AVAILABLE' | 'OCCUPIED'
 
 export interface Restaurant {
   id: string
@@ -318,13 +182,11 @@ export interface Table {
   id: string
   number: number
   capacity: number
-  status: TableStatus
+  status: 'AVAILABLE' | 'OCCUPIED'
   token: string
   restaurantId: string
   createdAt: string
   updatedAt: string
-  orders?: Order[]
-  sessions?: TableSession[]
 }
 
 export interface MenuItem {
@@ -338,8 +200,6 @@ export interface MenuItem {
   restaurantId: string
   createdAt: string
   updatedAt: string
-  ingredients?: MenuItemIngredient[]
-  orderItems?: OrderItem[]
 }
 
 export interface InventoryItem {
@@ -351,9 +211,6 @@ export interface InventoryItem {
   restaurantId: string
   createdAt: string
   updatedAt: string
-  ingredients?: MenuItemIngredient[]
-  alerts?: StockAlert[]
-  changeLogs?: InventoryChangeLog[]
 }
 
 export interface Order {
@@ -364,15 +221,13 @@ export interface Order {
   sessionId: string
   customerName: string
   customerPhone?: string
-  status: OrderStatus
+  status: 'PENDING' | 'PREPARING' | 'READY' | 'SERVED' | 'PAID' | 'CANCELLED'
   total: number
   notes?: string
   createdAt: string
   updatedAt: string
-  table?: Table
-  restaurant?: Restaurant
-  session?: TableSession
   items?: OrderItem[]
+  table?: Table
 }
 
 export interface OrderItem {
@@ -384,31 +239,7 @@ export interface OrderItem {
   notes?: string
   createdAt: string
   updatedAt: string
-  order?: Order
   menuItem?: MenuItem
-}
-
-export interface TableSession {
-  id: string
-  tableId: string
-  restaurantId: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  table?: Table
-  restaurant?: Restaurant
-  orders?: Order[]
-}
-
-export interface MenuItemIngredient {
-  id: string
-  menuItemId: string
-  inventoryItemId: string
-  quantity: number
-  createdAt: string
-  updatedAt: string
-  menuItem?: MenuItem
-  inventoryItem?: InventoryItem
 }
 
 export interface StockAlert {
@@ -423,38 +254,3 @@ export interface StockAlert {
   updatedAt: string
   inventoryItem?: InventoryItem
 }
-
-export interface InventoryChangeLog {
-  id: string
-  inventoryItemId: string
-  changeAmount: number
-  changeType: string
-  orderId?: string
-  createdAt: string
-  inventoryItem?: InventoryItem
-}
-
-// ============================================================================
-// UTILITY TYPES
-// ============================================================================
-
-export type Maybe<T> = T | null
-export type Optional<T> = T | undefined
-export type Nullable<T> = T | null | undefined
-
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
-}
-
-export type RequiredKeys<T, K extends keyof T> = T & Required<Pick<T, K>>
-export type OptionalKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
-
-export type UnionToIntersection<U> = 
-  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never
-
-export type Entries<T> = {
-  [K in keyof T]: [K, T[K]]
-}[keyof T][]
-
-export type Values<T> = T[keyof T]
-export type Keys<T> = keyof T
