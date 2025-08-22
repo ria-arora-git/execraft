@@ -1,9 +1,11 @@
+
 'use client'
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import toast from 'react-hot-toast'
 
 interface MenuItem {
@@ -122,122 +124,140 @@ export default function RecipesPage() {
   // Loading states
   if (recipesError || menuError || inventoryError) {
     return (
-      <div className="p-8 bg-blueDark min-h-screen">
-        <div className="text-red-400">
-          Error loading data. Please try refreshing the page.
+      <div className="p-4 sm:p-8 bg-background min-h-screen">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <h2 className="text-2xl font-bold text-error mb-4">Error Loading Data</h2>
+          <p className="text-text-secondary">Error loading data. Please try refreshing the page.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-8 bg-blueDark min-h-screen space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Recipe Management</h1>
-        <div className="text-slate-400 text-sm">
-          {recipes.length} ingredient{recipes.length !== 1 ? 's' : ''} across {Object.keys(groupedRecipes).length} menu item{Object.keys(groupedRecipes).length !== 1 ? 's' : ''}
+    <div className="p-4 sm:p-8 bg-background min-h-screen space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text">Recipe Management</h1>
+          <p className="text-text-secondary mt-1">
+            {recipes.length} ingredient{recipes.length !== 1 ? 's' : ''} across {Object.keys(groupedRecipes).length} menu item{Object.keys(groupedRecipes).length !== 1 ? 's' : ''}
+          </p>
         </div>
       </div>
 
       {/* Add Ingredient Form */}
-      <form onSubmit={addIngredient} className="bg-blueBase p-6 rounded-xl shadow-lg">
-        <h2 className="text-xl font-semibold text-white mb-4">Add Ingredient to Recipe</h2>
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label htmlFor="menuItemSelect" className="block text-sm font-medium text-slate-300 mb-2">
-              Menu Item
-            </label>
-            <select
-              id="menuItemSelect"
-              value={form.menuItemId}
-              onChange={e => setForm(f => ({ ...f, menuItemId: e.target.value }))}
-              required
-              className="w-full bg-blueDark text-white rounded px-3 py-2 border border-slate-600 focus:border-accent focus:outline-none"
-            >
-              <option value="" disabled>Select Menu Item</option>
-              {menuItems.map(m => (
-                <option key={m.id} value={m.id}>{m.name} {m.category && `(${m.category})`}</option>
-              ))}
-            </select>
-          </div>
+      <Card className="card">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-text">Add Ingredient to Recipe</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={addIngredient} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="menuItemSelect" className="form-label">
+                  Menu Item
+                </label>
+                <select
+                  id="menuItemSelect"
+                  value={form.menuItemId}
+                  onChange={e => setForm(f => ({ ...f, menuItemId: e.target.value }))}
+                  required
+                  className="form-control"
+                >
+                  <option value="" disabled>Select Menu Item</option>
+                  {menuItems.map(m => (
+                    <option key={m.id} value={m.id}>{m.name} {m.category && `(${m.category})`}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="flex-1 min-w-[200px]">
-            <label htmlFor="inventoryItemSelect" className="block text-sm font-medium text-slate-300 mb-2">
-              Ingredient
-            </label>
-            <select
-              id="inventoryItemSelect"
-              value={form.inventoryItemId}
-              onChange={e => setForm(f => ({ ...f, inventoryItemId: e.target.value }))}
-              required
-              className="w-full bg-blueDark text-white rounded px-3 py-2 border border-slate-600 focus:border-accent focus:outline-none"
-            >
-              <option value="" disabled>Select Ingredient</option>
-              {inventoryItems.map(i => (
-                <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label htmlFor="inventoryItemSelect" className="form-label">
+                  Ingredient
+                </label>
+                <select
+                  id="inventoryItemSelect"
+                  value={form.inventoryItemId}
+                  onChange={e => setForm(f => ({ ...f, inventoryItemId: e.target.value }))}
+                  required
+                  className="form-control"
+                >
+                  <option value="" disabled>Select Ingredient</option>
+                  {inventoryItems.map(i => (
+                    <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="w-32">
-            <label htmlFor="quantityInput" className="block text-sm font-medium text-slate-300 mb-2">
-              Quantity
-            </label>
-            <input
-              id="quantityInput"
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="0.00"
-              value={form.quantity}
-              onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-              required
-              className="w-full rounded px-3 py-2 bg-blueDark text-white border border-slate-600 focus:border-accent focus:outline-none"
-            />
-          </div>
-
-          <Button type="submit" disabled={isSubmitting} className="px-6">
-            {isSubmitting ? 'Adding...' : 'Add Ingredient'}
-          </Button>
-        </div>
-      </form>
+              <div>
+                <label htmlFor="quantityInput" className="form-label">
+                  Quantity
+                </label>
+                <input
+                  id="quantityInput"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.quantity}
+                  onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+                  required
+                  className="form-control"
+                />
+              </div>
+            </div>
+            
+            <Button type="submit" disabled={isSubmitting} className="btn-primary">
+              {isSubmitting ? 'Adding...' : 'Add Ingredient'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Recipes Display */}
       {Object.keys(groupedRecipes).length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-slate-400 text-lg mb-2">No recipes found</div>
-          <div className="text-slate-500 text-sm">Add ingredients to menu items to create recipes</div>
-        </div>
+        <Card className="card">
+          <CardContent className="text-center py-12">
+            <svg className="mx-auto h-12 w-12 text-text-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="text-lg font-medium text-text mb-2">No Recipes Found</h3>
+            <p className="text-text-secondary">Add ingredients to menu items to create recipes</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {Object.entries(groupedRecipes).map(([menuItemId, ingredients]) => (
-            <div key={menuItemId} className="bg-blueBase rounded-xl p-6 shadow-lg">
-              <div className="mb-4">
-                <h2 className="text-xl text-white font-semibold">{ingredients[0].menuItem?.name ?? 'Unknown Menu Item'}</h2>
+            <Card key={menuItemId} className="card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold text-text">
+                  {ingredients[0].menuItem?.name ?? 'Unknown Menu Item'}
+                </CardTitle>
                 {ingredients[0].menuItem?.category && (
-                  <div className="text-sm text-slate-400">{ingredients[0].menuItem.category}</div>
+                  <p className="text-text-secondary text-sm capitalize">{ingredients[0].menuItem.category}</p>
                 )}
-              </div>
+              </CardHeader>
               
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {ingredients.map(ingredient => (
-                  <div key={ingredient.id} className="bg-blueDark p-3 rounded-lg flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="text-white font-medium">{ingredient.inventoryItem?.name ?? 'Unknown Ingredient'}</div>
-                      <div className="text-slate-300 text-sm">{ingredient.quantity} {ingredient.inventoryItem?.unit ?? ''}</div>
+              <CardContent>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {ingredients.map(ingredient => (
+                    <div key={ingredient.id} className="bg-secondary p-3 rounded-lg flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-text font-medium">{ingredient.inventoryItem?.name ?? 'Unknown Ingredient'}</div>
+                        <div className="text-text-secondary text-sm">{ingredient.quantity} {ingredient.inventoryItem?.unit ?? ''}</div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => deleteIngredient(ingredient.id, ingredient.inventoryItem?.name ?? 'ingredient')}
+                        className="ml-2 text-error border-error hover:bg-error hover:text-error-foreground"
+                      >
+                        Remove
+                      </Button>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => deleteIngredient(ingredient.id, ingredient.inventoryItem?.name ?? 'ingredient')}
-                      className="ml-2"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

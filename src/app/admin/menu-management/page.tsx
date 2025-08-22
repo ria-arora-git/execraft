@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import toast from 'react-hot-toast'
 
 interface MenuItem {
@@ -140,173 +141,223 @@ export default function MenuManagement() {
     (item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  if (loading) return <div className="p-8 text-white text-center">Loading menu items...</div>
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-8 bg-background min-h-screen">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-8 bg-blueDark min-h-screen space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-white">Menu Management</h1>
-        <Button onClick={() => setShowForm(true)} aria-label="Add New Menu Item">
+    <div className="p-4 sm:p-8 bg-background min-h-screen space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text">Menu Management</h1>
+          <p className="text-text-secondary mt-1">Manage your restaurant's menu items</p>
+        </div>
+        <Button
+          onClick={() => setShowForm(true)}
+          aria-label="Add New Menu Item"
+          className="btn-primary w-full sm:w-auto"
+        >
           Add New Menu Item
         </Button>
       </div>
 
       {/* Search & Filter */}
-      <div className="flex gap-4 bg-blueBase p-4 rounded-xl">
-        <input
-          type="text"
-          placeholder="Search menu items..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-2 rounded border border-slate-600 text-white bg-blueDark focus:outline-none focus:ring-2 focus:ring-accent"
-          aria-label="Search menu items"
-        />
-        <select
-          value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 rounded border border-slate-600 text-white bg-blueDark focus:outline-none focus:ring-2 focus:ring-accent"
-          aria-label="Filter by category"
-        >
-          {categories.map(category => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-        </select>
-      </div>
+      <Card className="card">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search menu items..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="form-control"
+                aria-label="Search menu items"
+              />
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="form-control w-full sm:w-48"
+              aria-label="Filter by category"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Items Table */}
-      <div className="bg-blueBase rounded-xl overflow-hidden">
-        <table className="w-full text-white">
-          <thead className="bg-slate-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Name & Description
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Price ($)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Prep Time (mins)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700">
-            {filteredItems.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-slate-400">
-                  No menu items found.
-                </td>
-              </tr>
-            ) : (
-              filteredItems.map(item => (
-                <tr key={item.id} className="hover:bg-slate-800">
-                  <td className="px-6 py-4 whitespace-normal">
-                    <div className="font-medium">{item.name}</div>
-                    <div className="text-slate-400 text-sm">{item.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-300">
-                    {item.category}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-accent font-semibold">
-                    {item.price.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-300">
-                    {item.prepTime ?? '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => startEdit(item)} aria-label={`Edit ${item.name}`}>
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => deleteMenuItem(item.id)} aria-label={`Delete ${item.name}`}>
-                      Delete
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Items Grid */}
+      {filteredItems.length === 0 ? (
+        <Card className="card">
+          <CardContent className="text-center py-12">
+            <svg className="mx-auto h-12 w-12 text-text-secondary mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="text-lg font-medium text-text mb-2">No Menu Items Found</h3>
+            <p className="text-text-secondary">
+              {searchTerm || selectedCategory !== 'All' 
+                ? 'Try adjusting your search or filter criteria.'
+                : 'Create your first menu item to get started.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredItems.map(item => (
+            <Card key={item.id} className="card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold text-text flex items-start justify-between">
+                  <div className="flex-1 pr-2">
+                    <h3 className="font-semibold truncate">{item.name}</h3>
+                    <div className="text-sm text-text-secondary mt-1 capitalize">
+                      {item.category}
+                    </div>
+                  </div>
+                  <div className="text-lg font-bold text-primary">
+                    ${item.price.toFixed(2)}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-text-secondary text-sm line-clamp-3">
+                  {item.description}
+                </p>
+                
+                <div className="flex justify-between text-xs text-text-secondary">
+                  <span>Prep Time: {item.prepTime ? `${item.prepTime} mins` : 'Not set'}</span>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startEdit(item)}
+                    aria-label={`Edit ${item.name}`}
+                    className="flex-1"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => deleteMenuItem(item.id)}
+                    aria-label={`Delete ${item.name}`}
+                    className="flex-1"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-blueBase rounded-xl p-8 max-w-md w-full">
-            <h2 className="text-xl font-bold text-white mb-6">
-              {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
-            </h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <Card className="card max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-text">
+                {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="form-label">Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="form-control"
+                    aria-label="Menu Item Name"
+                  />
+                </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                required
-                placeholder="Name"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                aria-label="Menu Item Name"
-              />
-              <textarea
-                required
-                placeholder="Description"
-                rows={3}
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent resize-none"
-                aria-label="Menu Item Description"
-              />
-              <input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                placeholder="Price"
-                value={form.price}
-                onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                aria-label="Menu Item Price"
-              />
-              <input
-                type="number"
-                min="0"
-                placeholder="Prep Time (minutes)"
-                value={form.prepTime}
-                onChange={e => setForm(f => ({ ...f, prepTime: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                aria-label="Menu Item Prep Time"
-              />
-              <input
-                type="text"
-                required
-                placeholder="Category"
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                aria-label="Menu Item Category"
-              />
-              <input
-                type="url"
-                placeholder="Image URL (optional)"
-                value={form.image}
-                onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                className="w-full px-4 py-2 rounded border border-slate-600 bg-blueDark text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                aria-label="Menu Item Image URL"
-              />
-              <div className="flex justify-end space-x-4 pt-4">
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingItem ? 'Update' : 'Create'}
-                </Button>
-              </div>
-            </form>
-          </div>
+                <div>
+                  <label className="form-label">Description *</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    className="form-control resize-none"
+                    aria-label="Menu Item Description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Price *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                      className="form-control"
+                      aria-label="Menu Item Price"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Prep Time (mins)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.prepTime}
+                      onChange={e => setForm(f => ({ ...f, prepTime: e.target.value }))}
+                      className="form-control"
+                      aria-label="Menu Item Prep Time"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Category *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    className="form-control"
+                    aria-label="Menu Item Category"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Image URL (optional)</label>
+                  <input
+                    type="url"
+                    value={form.image}
+                    onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
+                    className="form-control"
+                    aria-label="Menu Item Image URL"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="btn-primary">
+                    {editingItem ? 'Update' : 'Create'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
