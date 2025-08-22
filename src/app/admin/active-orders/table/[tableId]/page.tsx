@@ -1,10 +1,8 @@
-
 'use client'
 export const dynamic = 'force-dynamic'
 
 import useSWR, { mutate } from 'swr'
 import { Button } from '@/components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
@@ -33,124 +31,41 @@ export default function TableOrdersPage({ params }: { params: { tableId: string 
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'bg-warning/20 text-warning border-warning/30'
-      case 'PREPARING': return 'bg-info/20 text-info border-info/30'
-      case 'READY': return 'bg-success/20 text-success border-success/30'
-      case 'SERVED': return 'bg-primary/20 text-primary border-primary/30'
-      default: return 'bg-secondary text-text border-border'
-    }
-  }
-
-  const getNextStatus = (currentStatus: string) => {
-    switch (currentStatus) {
-      case 'PENDING': return { status: 'PREPARING', label: 'Start Preparing', color: 'bg-info hover:bg-info/90' }
-      case 'PREPARING': return { status: 'READY', label: 'Mark Ready', color: 'bg-success hover:bg-success/90' }
-      case 'READY': return { status: 'SERVED', label: 'Mark Served', color: 'bg-primary hover:bg-primary/90' }
-      case 'SERVED': return { status: 'PAID', label: 'Mark Paid', color: 'bg-primary hover:bg-primary/90' }
-      default: return null
-    }
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 sm:p-8 bg-background min-h-screen">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-error mb-4">Error Loading Orders</h2>
-          <p className="text-text-primary mb-6">Failed to load orders for this table.</p>
-          <Button onClick={() => router.back()} variant="outline">
-            Go Back
-          </Button>
-        </div>
-      </div>
-    )
-  }
+  if (error) return <div className="p-8 text-red-500">Failed to load orders.</div>
 
   return (
-    <div className="p-4 sm:p-8 bg-background min-h-screen text-text-primary">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <Button onClick={() => router.back()} variant="outline" className="mb-4">
-            ← Back to Active Orders
-          </Button>
-          <h1 className="text-3xl font-bold text-text mb-2">
-            Table {orders?.[0]?.table?.number ?? 'Orders'}
-          </h1>
-          <p className="text-text-secondary">Manage orders for this table</p>
-        </div>
+    <div className="p-8 bg-blueDark min-h-screen text-white">
+      <Button onClick={() => router.back()} variant="outline" className="mb-8">← Back</Button>
+      <h1 className="text-3xl font-bold mb-6">Orders for Table {orders?.[0]?.table?.number ?? params.tableId}</h1>
 
-        {!orders ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      {orders?.length === 0 && <div>No active orders.</div>}
+
+      {orders?.map((order: any) => (
+        <div key={order.id} className="bg-blueBase rounded p-6 mb-4 border border-slate-600">
+          <div className="flex justify-between mb-4 items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Order #{order.orderNumber}</h2>
+              <p className="text-slate-400">Customer: {order.customerName}</p>
+              <p className="text-slate-400">Created: {new Date(order.createdAt).toLocaleString()}</p>
+            </div>
+            <span className="text-accent font-bold text-2xl">${order.total.toFixed(2)}</span>
           </div>
-        ) : orders.length === 0 ? (
-          <Card className="card">
-            <CardContent className="text-center py-12">
-              <h3 className="text-lg font-medium text-text mb-2">No Active Orders</h3>
-              <p className="text-text-secondary">This table has no active orders.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {orders.map((order: any) => {
-              const nextStatus = getNextStatus(order.status)
-              return (
-                <Card key={order.id} className="card">
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <CardTitle className="text-xl font-semibold text-text">
-                          Order #{order.orderNumber}
-                        </CardTitle>
-                        <div className="text-text-secondary text-sm mt-1">
-                          Customer: {order.customerName}
-                        </div>
-                        <div className="text-text-secondary text-sm">
-                          Created: {new Date(order.createdAt).toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                        <div className="text-2xl font-bold text-primary">
-                          ${order.total.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-6">
-                      <h4 className="font-medium text-text mb-3">Order Items:</h4>
-                      <div className="space-y-2">
-                        {order.items.map((item: any) => (
-                          <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-secondary rounded-lg">
-                            <span className="text-text">
-                              {item.quantity}x {item.menuItem.name}
-                            </span>
-                            <span className="text-primary font-medium">
-                              ${(item.price * item.quantity).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {nextStatus && (
-                      <Button
-                        onClick={() => updateOrderStatus(order.id, nextStatus.status)}
-                        className={`w-full sm:w-auto ${nextStatus.color} text-white`}
-                      >
-                        {nextStatus.label}
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
+          <div className="mb-4">
+            <strong>Items:</strong>
+            <ul className="list-disc list-inside">
+              {order.items.map((item: any) => (
+                <li key={item.id}>{item.quantity} x {item.menuItem.name}</li>
+              ))}
+            </ul>
           </div>
-        )}
-      </div>
+          <div className="flex space-x-2">
+            {order.status === 'PENDING' && <Button onClick={() => updateOrderStatus(order.id, 'PREPARING')} className="bg-blue-600">Start Preparing</Button>}
+            {order.status === 'PREPARING' && <Button onClick={() => updateOrderStatus(order.id, 'READY')} className="bg-green-600">Mark Ready</Button>}
+            {order.status === 'READY' && <Button onClick={() => updateOrderStatus(order.id, 'SERVED')} className="bg-purple-600">Mark Served</Button>}
+            {order.status === 'SERVED' && <Button onClick={() => updateOrderStatus(order.id, 'PAID')} className="bg-accent">Mark Paid</Button>}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

@@ -1,66 +1,59 @@
-export function exportOrders(orders: any[], filename: string) {
-  // Create CSV content
-  const headers = ['Order Number', 'Table', 'Customer', 'Total', 'Status', 'Created At', 'Items']
-  
-  const csvContent = [
-    headers.join(','),
-    ...orders.map(order => {
-      const items = order.items?.map((item: any) => 
-        `${item.quantity}x ${item.menuItem?.name || 'Unknown Item'}`
-      ).join('; ') || ''
-      
-      return [
-        order.orderNumber || '',
-        `Table ${order.table?.number || 'N/A'}`,
-        order.customerName || '',
-        `$${(order.total || 0).toFixed(2)}`,
-        order.status || '',
-        new Date(order.createdAt).toLocaleString(),
-        `"${items}"`
-      ].join(',')
-    })
-  ].join('\n')
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 
-  // Create and download file
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+export async function exportToXLS(filename: string, data: any[], headers: string[]) {
+  try {
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Sheet1')
+
+    worksheet.addRow(headers)
+    const headerRow = worksheet.getRow(1)
+    headerRow.font = { bold: true }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '1E3A8A' },
+    }
+    headerRow.font = { color: { argb: 'FFFFFF' }, bold: true }
+
+    data.forEach(row => worksheet.addRow(row))
+
+    worksheet.columns.forEach(col => {
+      let maxLength = col.header ? col.header.length : 10
+      col.eachCell?.({ includeEmpty: true }, cell => {
+        maxLength = Math.max(maxLength, cell.value?.toString().length ?? 10)
+      })
+      col.width = maxLength < 10 ? 10 : maxLength
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    saveAs(blob, `${filename}.xlsx`)
+  } catch (error) {
+    console.error(error)
+    throw new Error('Export failed')
   }
 }
 
-export function exportInventory(items: any[], filename: string) {
-  const headers = ['Name', 'Unit', 'Current Quantity', 'Min Stock', 'Status', 'Last Updated']
-  
-  const csvContent = [
-    headers.join(','),
-    ...items.map(item => [
-      item.name || '',
-      item.unit || '',
-      item.quantity || 0,
-      item.minStock || 0,
-      item.quantity <= item.minStock ? 'Low Stock' : 'OK',
-      new Date(item.updatedAt).toLocaleString()
-    ].join(','))
-  ].join('\n')
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+export async function exportOrders(orders: any[], filename = 'orders') {
+  const data = orders.map(o => [
+    o.orderNumber,
+    `Table ${o.table.number}`,
+    o.customerName,
+    `$${o.total.toFixed(2)}`,
+    o.status,
+    new Date(o.createdAt).toLocaleString(),
+  ])
+  const headers = [
+    'Order #',
+    'Table',
+    'Customer',
+    'Total',
+    'Status',
+    'Created At',
+  ]
+  await exportToXLS(filename, data, headers)
 }

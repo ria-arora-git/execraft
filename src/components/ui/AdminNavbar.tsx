@@ -8,7 +8,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin' },
   { name: 'Active Orders', href: '/admin/active-orders' },
   { name: 'Order History', href: '/admin/order-history' },
-  { name: 'Menu Management', href: '/admin/menu-management' }, // Added this line
+  { name: 'Menu Management', href: '/admin/menu-management' }, 
   { name: 'Inventory', href: '/admin/inventory' },
   { name: 'Recipes', href: '/admin/recipes' },
   { name: 'Table Management', href: '/admin/table-management' },
