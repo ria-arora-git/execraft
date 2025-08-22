@@ -19,7 +19,21 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error('Failed to fetch')
+  return res.json()
+})
+
+interface OrderItem {
+  id: string
+  quantity: number
+  price: number
+  notes?: string
+  menuItem: {
+    name: string
+    preparationTime?: number
+  }
+}
 
 interface Order {
   id: string
@@ -32,18 +46,9 @@ interface Order {
   tableId: string
   table: {
     number: number
-    location: string
+    location?: string
   }
-  items: {
-    id: string
-    quantity: number
-    price: number
-    notes?: string
-    menuItem: {
-      name: string
-      preparationTime: number
-    }
-  }[]
+  items: OrderItem[]
   createdAt: string
   updatedAt: string
 }
@@ -76,14 +81,19 @@ export default function ActiveOrdersPage() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/orders`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          status: newStatus,
-          organizationId: organization?.id 
+          id: orderId,
+          status: newStatus
         })
       })
+      
+      if (!response.ok) {
+        throw new Error('Failed to update order status')
+      }
+      
       mutate()
     } catch (error) {
       console.error('Failed to update order status:', error)

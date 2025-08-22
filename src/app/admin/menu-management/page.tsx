@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import useSWR from 'swr'
+import { useOrganization } from '@clerk/nextjs'
 import { 
   Plus,
   Search,
@@ -19,36 +20,43 @@ import {
   MoreVertical
 } from 'lucide-react'
 
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error('Failed to fetch')
+  return res.json()
+})
+
+interface MenuItemIngredient {
+  id: string
+  ingredient: {
+    name: string
+  }
+  quantity: number
+}
+
 interface MenuItem {
   id: string
   name: string
   description: string
   price: number
   category: string
-  isAvailable: boolean
-  preparationTime: number
-  allergens: string[]
+  prepTime?: number
   image?: string
-  ingredients: {
-    id: string
-    ingredient: {
-      name: string
-    }
-    quantity: number
-  }[]
+  ingredients: MenuItemIngredient[]
   createdAt: string
   updatedAt: string
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
 export default function MenuManagementPage() {
+  const { organization } = useOrganization()
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  const { data: menuItems = [], isLoading, mutate } = useSWR<MenuItem[]>('/api/admin/menu-items', fetcher)
+  const { data: menuItems = [], isLoading, mutate } = useSWR<MenuItem[]>(
+    organization ? `/api/menu?organizationId=${organization.id}` : null,
+    fetcher
+  )
 
   const categories = ['all', 'appetizers', 'mains', 'desserts', 'beverages', 'specials']
 
@@ -66,23 +74,20 @@ export default function MenuManagementPage() {
     if (!confirm('Are you sure you want to delete this menu item?')) return
     
     try {
-      await fetch(`/api/admin/menu-items/${itemId}`, { method: 'DELETE' })
-      mutate()
+      const response = await fetch(`/api/menu/${itemId}`, { 
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        mutate()
+      } else {
+        console.error('Failed to delete menu item')
+      }
     } catch (error) {
       console.error('Failed to delete menu item:', error)
-    }
-  }
-
-  const toggleAvailability = async (itemId: string, isAvailable: boolean) => {
-    try {
-      await fetch(`/api/admin/menu-items/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isAvailable: !isAvailable })
-      })
-      mutate()
-    } catch (error) {
-      console.error('Failed to update availability:', error)
     }
   }
 
@@ -157,9 +162,9 @@ export default function MenuManagementPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">Available</p>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">Categories</p>
                   <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-                    {menuItems.filter(item => item.isAvailable).length}
+                    {new Set(menuItems.map(item => item.category)).size}
                   </p>
                 </div>
                 <div className="p-3 bg-[var(--color-success)]/10 rounded-lg">
@@ -189,13 +194,13 @@ export default function MenuManagementPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">Categories</p>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">Avg Prep Time</p>
                   <p className="text-2xl font-bold text-[var(--color-text-primary)]">
-                    {new Set(menuItems.map(item => item.category)).size}
+                    {menuItems.length > 0 ? Math.round(menuItems.filter(item => item.prepTime).reduce((acc, item) => acc + (item.prepTime || 0), 0) / menuItems.filter(item => item.prepTime).length) || 0 : 0}m
                   </p>
                 </div>
                 <div className="p-3 bg-[var(--color-warning)]/10 rounded-lg">
-                  <Star className="w-6 h-6 text-[var(--color-warning)]" />
+                  <Clock className="w-6 h-6 text-[var(--color-warning)]" />
                 </div>
               </div>
             </CardContent>
@@ -333,19 +338,12 @@ export default function MenuManagementPage() {
                             {item.description}
                           </p>
                         </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2 ${
-                          item.isAvailable 
-                            ? 'bg-[var(--color-success-bg)] text-[var(--color-success)] border border-[var(--color-success-border)]'
-                            : 'bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error-border)]'
-                        }`}>
-                          {item.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
                       </div>
 
                       <div className="flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {item.preparationTime}min
+                          {item.prepTime || 15}min
                         </div>
                         <div className="text-lg font-bold text-[var(--color-primary)]">
                           ${item.price.toFixed(2)}
@@ -353,16 +351,9 @@ export default function MenuManagementPage() {
                       </div>
 
                       <div className="flex items-center gap-2 pt-3 border-t border-[var(--color-border)]">
-                        <Button
-                          onClick={() => toggleAvailability(item.id, item.isAvailable)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                        >
-                          {item.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Edit2 className="w-4 h-4" />
+                        <Button variant="outline" size="sm" className="flex-1">
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Edit
                         </Button>
                         <Button 
                           variant="outline" 
@@ -399,16 +390,9 @@ export default function MenuManagementPage() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-[var(--color-text-secondary)]">
                             <span className="flex items-center">
                               <Clock className="w-3 h-3 mr-1" />
-                              {item.preparationTime}min
+                              {item.prepTime || 15}min
                             </span>
                             <span className="capitalize">{item.category}</span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              item.isAvailable 
-                                ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
-                                : 'bg-[var(--color-error-bg)] text-[var(--color-error)]'
-                            }`}>
-                              {item.isAvailable ? 'Available' : 'Unavailable'}
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -419,13 +403,6 @@ export default function MenuManagementPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => toggleAvailability(item.id, item.isAvailable)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {item.isAvailable ? 'Disable' : 'Enable'}
-                          </Button>
                           <Button variant="outline" size="sm">
                             <Edit2 className="w-4 h-4" />
                           </Button>
